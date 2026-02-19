@@ -1,5 +1,8 @@
 {
   "name": "@aaronshaf/plane",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.1.1",
   "description": "CLI for the Plane project management API",
   "keywords": [
