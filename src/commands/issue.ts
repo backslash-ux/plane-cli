@@ -41,10 +41,14 @@ const priorityOption = Options.optional(
   Options.choice("priority", ["urgent", "high", "medium", "low", "none"]),
 ).pipe(Options.withDescription("Issue priority"))
 
+const descriptionOption = Options.optional(Options.text("description")).pipe(
+  Options.withDescription("Issue description (plain text, stored as HTML)"),
+)
+
 export const issueUpdate = Command.make(
   "update",
-  { state: stateOption, priority: priorityOption, ref: refArg },
-  ({ ref, state, priority }) =>
+  { state: stateOption, priority: priorityOption, description: descriptionOption, ref: refArg },
+  ({ ref, state, priority, description }) =>
     Effect.gen(function* () {
       const { projectId, seq } = yield* parseIssueRef(ref)
       const issue = yield* findIssueBySeq(projectId, seq)
@@ -57,9 +61,13 @@ export const issueUpdate = Command.make(
       if (priority._tag === "Some") {
         body["priority"] = priority.value
       }
+      if (description._tag === "Some") {
+        const escaped = description.value.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        body["description_html"] = `<p>${escaped}</p>`
+      }
 
       if (Object.keys(body).length === 0) {
-        yield* Effect.fail(new Error("Nothing to update. Specify --state or --priority"))
+        yield* Effect.fail(new Error("Nothing to update. Specify --state, --priority, or --description"))
       }
 
       const raw = yield* api.patch(`projects/${projectId}/issues/${issue.id}/`, body)
@@ -70,7 +78,7 @@ export const issueUpdate = Command.make(
     }),
 ).pipe(
   Command.withDescription(
-    "Update an issue's state or priority. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --state started --priority medium OPS-3",
+    "Update an issue's state, priority, or description. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --description \"New description\" PROJ-29\n  plane issue update --state started --priority medium OPS-3",
   ),
 )
 
@@ -116,22 +124,30 @@ const createStateOption = Options.optional(Options.text("state")).pipe(
   Options.withDescription("Initial state group or name"),
 )
 
+const createDescriptionOption = Options.optional(Options.text("description")).pipe(
+  Options.withDescription("Issue description (plain text, stored as HTML)"),
+)
+
 export const issueCreate = Command.make(
   "create",
-  { priority: createPriorityOption, state: createStateOption, project: projectRefArg, title: titleArg },
-  ({ project, title, priority, state }) =>
+  { priority: createPriorityOption, state: createStateOption, description: createDescriptionOption, project: projectRefArg, title: titleArg },
+  ({ project, title, priority, state, description }) =>
     Effect.gen(function* () {
       const { key, id: projectId } = yield* resolveProject(project)
       const body: Record<string, unknown> = { name: title }
       if (priority._tag === "Some") body["priority"] = priority.value
       if (state._tag === "Some") body["state"] = yield* getStateId(projectId, state.value)
+      if (description._tag === "Some") {
+        const escaped = description.value.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        body["description_html"] = `<p>${escaped}</p>`
+      }
       const raw = yield* api.post(`projects/${projectId}/issues/`, body)
       const created = yield* decodeOrFail(IssueSchema, raw)
       yield* Console.log(`Created ${key}-${created.sequence_id}: ${created.name}`)
     }),
 ).pipe(
   Command.withDescription(
-    "Create a new issue in a project.\n\nExamples:\n  plane issue create PROJ \"Migrate Button component\"\n  plane issue create --priority high --state started PROJ \"Fix lint pipeline\"",
+    "Create a new issue in a project.\n\nExamples:\n  plane issue create PROJ \"Migrate Button component\"\n  plane issue create --priority high --state started PROJ \"Fix lint pipeline\"\n  plane issue create --description \"Detailed context here\" PROJ \"Add dark mode\"",
   ),
 )
 

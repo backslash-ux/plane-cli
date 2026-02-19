@@ -95,6 +95,7 @@ describe("issueUpdate", () => {
           ref: "ACME-29",
           state: { _tag: "Some", value: "completed" },
           priority: { _tag: "None" },
+          description: { _tag: "None" },
         }),
       )
     } finally {
@@ -132,6 +133,7 @@ describe("issueUpdate", () => {
           ref: "ACME-29",
           state: { _tag: "None" },
           priority: { _tag: "Some", value: "urgent" },
+          description: { _tag: "None" },
         }),
       )
     } finally {
@@ -149,12 +151,13 @@ describe("issueUpdate", () => {
           ref: "ACME-29",
           state: { _tag: "None" },
           priority: { _tag: "None" },
+          description: { _tag: "None" },
         }),
       ),
     )
     expect(result._tag).toBe("Left")
     if (result._tag === "Left") {
-      expect(result.left.message).toContain("Nothing to update")
+      expect((result.left as Error).message).toContain("Nothing to update")
     }
   })
 })
@@ -243,6 +246,7 @@ describe("issueCreate", () => {
           title: "New issue",
           priority: { _tag: "None" },
           state: { _tag: "None" },
+          description: { _tag: "None" },
         }),
       )
     } finally {
@@ -282,6 +286,7 @@ describe("issueCreate", () => {
           title: "High priority issue",
           priority: { _tag: "Some", value: "high" },
           state: { _tag: "Some", value: "completed" },
+          description: { _tag: "None" },
         }),
       )
     } finally {
@@ -289,6 +294,138 @@ describe("issueCreate", () => {
     }
 
     expect(logs.join("\n")).toContain("ACME-100")
+  })
+})
+
+describe("issueCreate description", () => {
+  it("creates an issue with a description", async () => {
+    let postedBody: unknown
+    server.use(
+      http.post(
+        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+        async ({ request }) => {
+          postedBody = await request.json()
+          return HttpResponse.json({
+            id: "new-i3",
+            sequence_id: 101,
+            name: (postedBody as any).name,
+            priority: "none",
+            state: "s1",
+          })
+        },
+      ),
+    )
+
+    const { issueCreate } = await import("@/commands/issue")
+    await Effect.runPromise(
+      (issueCreate as any).handler({
+        project: "ACME",
+        title: "Issue with description",
+        priority: { _tag: "None" },
+        state: { _tag: "None" },
+        description: { _tag: "Some", value: "Some context here" },
+      }),
+    )
+
+    expect((postedBody as any).description_html).toBe("<p>Some context here</p>")
+  })
+
+  it("HTML-escapes angle brackets in description", async () => {
+    let postedBody: unknown
+    server.use(
+      http.post(
+        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+        async ({ request }) => {
+          postedBody = await request.json()
+          return HttpResponse.json({
+            id: "new-i4",
+            sequence_id: 102,
+            name: (postedBody as any).name,
+            priority: "none",
+            state: "s1",
+          })
+        },
+      ),
+    )
+
+    const { issueCreate } = await import("@/commands/issue")
+    await Effect.runPromise(
+      (issueCreate as any).handler({
+        project: "ACME",
+        title: "XSS test",
+        priority: { _tag: "None" },
+        state: { _tag: "None" },
+        description: { _tag: "Some", value: "<script>alert(1)</script>" },
+      }),
+    )
+
+    expect((postedBody as any).description_html).toContain("&lt;script&gt;")
+    expect((postedBody as any).description_html).not.toContain("<script>")
+  })
+})
+
+describe("issueUpdate description", () => {
+  it("updates description", async () => {
+    let patchedBody: unknown
+    server.use(
+      http.patch(
+        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+        async ({ request }) => {
+          patchedBody = await request.json()
+          return HttpResponse.json({
+            id: "i1",
+            sequence_id: 29,
+            name: "Migrate Button",
+            priority: "high",
+            state: "s1",
+          })
+        },
+      ),
+    )
+
+    const { issueUpdate } = await import("@/commands/issue")
+    await Effect.runPromise(
+      (issueUpdate as any).handler({
+        ref: "ACME-29",
+        state: { _tag: "None" },
+        priority: { _tag: "None" },
+        description: { _tag: "Some", value: "Updated description" },
+      }),
+    )
+
+    expect((patchedBody as any).description_html).toBe("<p>Updated description</p>")
+  })
+
+  it("HTML-escapes angle brackets in update description", async () => {
+    let patchedBody: unknown
+    server.use(
+      http.patch(
+        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+        async ({ request }) => {
+          patchedBody = await request.json()
+          return HttpResponse.json({
+            id: "i1",
+            sequence_id: 29,
+            name: "Migrate Button",
+            priority: "high",
+            state: "s1",
+          })
+        },
+      ),
+    )
+
+    const { issueUpdate } = await import("@/commands/issue")
+    await Effect.runPromise(
+      (issueUpdate as any).handler({
+        ref: "ACME-29",
+        state: { _tag: "None" },
+        priority: { _tag: "None" },
+        description: { _tag: "Some", value: "<b>bold</b>" },
+      }),
+    )
+
+    expect((patchedBody as any).description_html).toContain("&lt;b&gt;")
+    expect((patchedBody as any).description_html).not.toContain("<b>")
   })
 })
 
