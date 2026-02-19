@@ -49,6 +49,10 @@ const priorityOption = Options.optional(
 	Options.choice("priority", ["urgent", "high", "medium", "low", "none"]),
 ).pipe(Options.withDescription("Issue priority"));
 
+const titleUpdateOption = Options.optional(Options.text("title")).pipe(
+	Options.withDescription("Issue title"),
+);
+
 const descriptionOption = Options.optional(Options.text("description")).pipe(
 	Options.withDescription("Issue description (plain text, stored as HTML)"),
 );
@@ -71,13 +75,14 @@ export const issueUpdate = Command.make(
 	{
 		state: stateOption,
 		priority: priorityOption,
+		title: titleUpdateOption,
 		description: descriptionOption,
 		assignee: assigneeOption,
 		label: labelOption,
 		noAssignee: noAssigneeOption,
 		ref: refArg,
 	},
-	({ ref, state, priority, description, assignee, label, noAssignee }) =>
+	({ ref, state, priority, title, description, assignee, label, noAssignee }) =>
 		Effect.gen(function* () {
 			const { projectId, seq } = yield* parseIssueRef(ref);
 			const issue = yield* findIssueBySeq(projectId, seq);
@@ -89,6 +94,9 @@ export const issueUpdate = Command.make(
 			}
 			if (priority._tag === "Some") {
 				body["priority"] = priority.value;
+			}
+			if (title._tag === "Some") {
+				body["name"] = title.value;
 			}
 			if (description._tag === "Some") {
 				const escaped = escapeHtmlText(description.value);
@@ -108,7 +116,7 @@ export const issueUpdate = Command.make(
 			if (Object.keys(body).length === 0) {
 				yield* Effect.fail(
 					new Error(
-						"Nothing to update. Specify --state, --priority, --description, --assignee, --label, or --no-assignee",
+						"Nothing to update. Specify --state, --priority, --title, --description, --assignee, --label, or --no-assignee",
 					),
 				);
 			}
@@ -124,7 +132,7 @@ export const issueUpdate = Command.make(
 		}),
 ).pipe(
 	Command.withDescription(
-		'Update an issue\'s state, priority, description, or assignee. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --assignee "Jane Doe" PROJ-29\n  plane issue update --no-assignee PROJ-29\n  plane issue update --description "New description" PROJ-29',
+		'Update an issue\'s state, priority, title, description, or assignee. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --title "New issue title" PROJ-29\n  plane issue update --assignee "Jane Doe" PROJ-29\n  plane issue update --no-assignee PROJ-29\n  plane issue update --description "New description" PROJ-29',
 	),
 );
 

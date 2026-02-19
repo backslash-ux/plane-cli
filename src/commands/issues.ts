@@ -3,7 +3,7 @@ import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { IssuesResponseSchema } from "../config.js";
 import { formatIssue } from "../format.js";
-import { resolveProject } from "../resolve.js";
+import { getMemberId, resolveProject } from "../resolve.js";
 import type { State } from "../config.js";
 import { jsonMode, xmlMode, toXml } from "../output.js";
 
@@ -19,24 +19,51 @@ const stateOption = Options.optional(Options.text("state")).pipe(
 	),
 );
 
+const assigneeOption = Options.optional(Options.text("assignee")).pipe(
+	Options.withDescription(
+		"Filter by assignee (display name, email, or member UUID)",
+	),
+);
+
+const priorityOption = Options.optional(
+	Options.choice("priority", ["urgent", "high", "medium", "low", "none"]),
+).pipe(Options.withDescription("Filter by priority"));
+
 export const issuesList = Command.make(
 	"list",
-	{ state: stateOption, project: projectArg },
-	({ project, state }) =>
+	{
+		state: stateOption,
+		assignee: assigneeOption,
+		priority: priorityOption,
+		project: projectArg,
+	},
+	({ project, state, assignee, priority }) =>
 		Effect.gen(function* () {
 			const { key, id } = yield* resolveProject(project);
 			const raw = yield* api.get(`projects/${id}/issues/?order_by=sequence_id`);
 			const { results } = yield* decodeOrFail(IssuesResponseSchema, raw);
 
-			const filtered =
-				state._tag === "Some"
-					? results.filter((i) => {
-							const s = i.state as State | string;
-							if (typeof s !== "object") return false;
-							const val = state.value.toLowerCase();
-							return s.group === val || s.name.toLowerCase() === val;
-						})
-					: results;
+			let filtered = results;
+
+			if (state._tag === "Some") {
+				filtered = filtered.filter((i) => {
+					const s = i.state as State | string;
+					if (typeof s !== "object") return false;
+					const val = state.value.toLowerCase();
+					return s.group === val || s.name.toLowerCase() === val;
+				});
+			}
+
+			if (assignee._tag === "Some") {
+				const memberId = yield* getMemberId(assignee.value);
+				filtered = filtered.filter(
+					(i) => Array.isArray(i.assignees) && i.assignees.includes(memberId),
+				);
+			}
+
+			if (priority._tag === "Some") {
+				filtered = filtered.filter((i) => i.priority === priority.value);
+			}
 
 			if (jsonMode) {
 				yield* Console.log(JSON.stringify(filtered, null, 2));

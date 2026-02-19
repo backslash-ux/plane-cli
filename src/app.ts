@@ -38,7 +38,7 @@ CONCEPTS
 ALL SUBCOMMANDS
   init                Set up config interactively
   projects list       List all projects
-  issues list         List issues (supports --state filter)
+  issues list         List issues (supports --state, --assignee, --priority)
   issue               get | create | update | delete | comment | activity |
                       link | comments | worklogs
   cycles              list | issues (list, add)
