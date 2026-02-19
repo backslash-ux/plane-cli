@@ -179,7 +179,7 @@ export const PageSchema = Schema.Struct({
 	name: Schema.String,
 	description_html: Schema.optional(Schema.NullOr(Schema.String)),
 	created_at: Schema.String,
-	updated_at: Schema.optional(Schema.String),
+	updated_at: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type Page = typeof PageSchema.Type;
 

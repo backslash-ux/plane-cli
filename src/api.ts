@@ -38,6 +38,8 @@ function request(
 	return Effect.tryPromise({
 		try: async () => {
 			const { token, host, workspace } = getConfig();
+			if (!token) throw new Error("No API token configured. Run 'plane init' or set PLANE_API_TOKEN.");
+			if (!workspace) throw new Error("No workspace configured. Run 'plane init' or set PLANE_WORKSPACE.");
 			let url = `${host}/api/v1/workspaces/${workspace}/${path}`;
 
 			// Always expand state on issue list/get calls (not intake-issues/ or cycle-issues/)

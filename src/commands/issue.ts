@@ -79,7 +79,7 @@ const titleUpdateOption = Options.optional(Options.text("title")).pipe(
 );
 
 const descriptionOption = Options.optional(Options.text("description")).pipe(
-	Options.withDescription("Issue description (plain text, stored as HTML)"),
+	Options.withDescription("Issue description as HTML (e.g. '<p>Details</p>')"),
 );
 
 const assigneeOption = Options.optional(Options.text("assignee")).pipe(
@@ -120,26 +120,25 @@ export function issueUpdateHandler({
 
 		const body: IssueUpdatePayload = {};
 
-		if (state._tag === "Some") {
+		if (Option.isSome(state)) {
 			body.state = yield* getStateId(projectId, state.value);
 		}
-		if (priority._tag === "Some") {
+		if (Option.isSome(priority)) {
 			body.priority = priority.value;
 		}
-		if (title._tag === "Some") {
+		if (Option.isSome(title)) {
 			body.name = title.value;
 		}
-		if (description._tag === "Some") {
-			const escaped = escapeHtmlText(description.value);
-			body.description_html = `<p>${escaped}</p>`;
+		if (Option.isSome(description)) {
+			body.description_html = description.value;
 		}
 		if (noAssignee) {
 			body.assignees = [];
-		} else if (assignee._tag === "Some") {
+		} else if (Option.isSome(assignee)) {
 			const memberId = yield* getMemberId(assignee.value);
 			body.assignees = [memberId];
 		}
-		if (label._tag === "Some") {
+		if (Option.isSome(label)) {
 			const labelId = yield* getLabelId(projectId, label.value);
 			body.label_ids = [labelId];
 		}
@@ -234,7 +233,7 @@ const createStateOption = Options.optional(Options.text("state")).pipe(
 const createDescriptionOption = Options.optional(
 	Options.text("description"),
 ).pipe(
-	Options.withDescription("Issue description (plain text, stored as HTML)"),
+	Options.withDescription("Issue description as HTML (e.g. '<p>Details</p>')"),
 );
 
 const createAssigneeOption = Options.optional(Options.text("assignee")).pipe(
@@ -265,18 +264,17 @@ export function issueCreateHandler({
 	return Effect.gen(function* () {
 		const { key, id: projectId } = yield* resolveProject(project);
 		const body: IssueCreatePayload = { name: title };
-		if (priority._tag === "Some") body.priority = priority.value;
-		if (state._tag === "Some")
+		if (Option.isSome(priority)) body.priority = priority.value;
+		if (Option.isSome(state))
 			body.state = yield* getStateId(projectId, state.value);
-		if (description._tag === "Some") {
-			const escaped = escapeHtmlText(description.value);
-			body.description_html = `<p>${escaped}</p>`;
+		if (Option.isSome(description)) {
+			body.description_html = description.value;
 		}
-		if (assignee._tag === "Some") {
+		if (Option.isSome(assignee)) {
 			const memberId = yield* getMemberId(assignee.value);
 			body.assignees = [memberId];
 		}
-		if (label._tag === "Some") {
+		if (Option.isSome(label)) {
 			const labelId = yield* getLabelId(projectId, label.value);
 			body.label_ids = [labelId];
 		}
@@ -403,7 +401,7 @@ export function issueLinkAddHandler({
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: Record<string, string> = { url };
-		if (title._tag === "Some") body["title"] = title.value;
+		if (Option.isSome(title)) body["title"] = title.value;
 		const raw = yield* api.post(
 			`projects/${projectId}/issues/${issue.id}/issue-links/`,
 			body,
@@ -627,7 +625,7 @@ export function issueWorklogsAddHandler({
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: WorklogPayload = { duration };
-		if (description._tag === "Some") body.description = description.value;
+		if (Option.isSome(description)) body.description = description.value;
 		const raw = yield* api.post(
 			`projects/${projectId}/issues/${issue.id}/worklogs/`,
 			body,

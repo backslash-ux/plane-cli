@@ -44,7 +44,7 @@ ALL SUBCOMMANDS
   cycles              list | issues (list, add)
   modules             list | issues (list, add, remove)
   intake              list | accept | reject
-  pages               list | get
+  pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
   states list         List workflow states for a project
   labels list         List labels for a project
   members list        List members of a project
@@ -74,5 +74,5 @@ FOR AI AGENTS / BOTS
 
 export const cli = Command.run(plane, {
 	name: "plane",
-	version: "0.1.0",
+	version: "0.1.11",
 });

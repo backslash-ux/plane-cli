@@ -595,11 +595,11 @@ describe("issueCreate description", () => {
 		);
 
 		expect((postedBody as { description_html?: string }).description_html).toBe(
-			"<p>Some context here</p>",
+			"Some context here",
 		);
 	});
 
-	it("HTML-escapes angle brackets in description", async () => {
+	it("passes raw HTML description as-is", async () => {
 		let postedBody: unknown;
 		server.use(
 			http.post(
@@ -621,10 +621,10 @@ describe("issueCreate description", () => {
 		await Effect.runPromise(
 			issueCreateHandler({
 				project: "ACME",
-				title: "XSS test",
+				title: "HTML test",
 				priority: Option.none(),
 				state: Option.none(),
-				description: Option.some("<script>alert(1)</script>"),
+				description: Option.some("<p>Raw <b>HTML</b></p>"),
 				assignee: Option.none(),
 				label: Option.none(),
 			}),
@@ -632,10 +632,7 @@ describe("issueCreate description", () => {
 
 		expect(
 			(postedBody as { description_html?: string }).description_html,
-		).toContain("&lt;script&gt;");
-		expect(
-			(postedBody as { description_html?: string }).description_html,
-		).not.toContain("<script>");
+		).toBe("<p>Raw <b>HTML</b></p>");
 	});
 });
 
@@ -674,10 +671,10 @@ describe("issueUpdate description", () => {
 
 		expect(
 			(patchedBody as { description_html?: string }).description_html,
-		).toBe("<p>Updated description</p>");
+		).toBe("Updated description");
 	});
 
-	it("HTML-escapes angle brackets in update description", async () => {
+	it("passes raw HTML as-is in update description", async () => {
 		let patchedBody: unknown;
 		server.use(
 			http.patch(
@@ -711,10 +708,7 @@ describe("issueUpdate description", () => {
 
 		expect(
 			(patchedBody as { description_html?: string }).description_html,
-		).toContain("&lt;b&gt;");
-		expect(
-			(patchedBody as { description_html?: string }).description_html,
-		).not.toContain("<b>");
+		).toBe("<b>bold</b>");
 	});
 });
 
@@ -1030,11 +1024,11 @@ describe("--description argv parsing", () => {
 		]);
 		expect(logs.join("\n")).toContain("Created");
 		expect((postedBody as { description_html?: string }).description_html).toBe(
-			"<p>Hello world</p>",
+			"Hello world",
 		);
 	});
 
-	it("issue create HTML-escapes & in description via argv", async () => {
+	it("issue create passes raw HTML description via argv", async () => {
 		let postedBody: unknown;
 		server.use(
 			http.post(
@@ -1056,12 +1050,12 @@ describe("--description argv parsing", () => {
 			"issue",
 			"create",
 			"--description",
-			"a & b",
+			"<p>Raw HTML</p>",
 			"ACME",
-			"Ampersand test",
+			"HTML test",
 		]);
 		expect((postedBody as { description_html?: string }).description_html).toBe(
-			"<p>a &amp; b</p>",
+			"<p>Raw HTML</p>",
 		);
 	});
 
@@ -1086,6 +1080,6 @@ describe("--description argv parsing", () => {
 		await runCli(["issue", "update", "--description", "New desc", "ACME-29"]);
 		expect(
 			(patchedBody as { description_html?: string }).description_html,
-		).toBe("<p>New desc</p>");
+		).toBe("New desc");
 	});
 });
