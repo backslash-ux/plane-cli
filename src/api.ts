@@ -66,7 +66,22 @@ function request(
 			// 204 No Content
 			if (res.status === 204) return null;
 
-			return res.json();
+			// Use text + lenient parse to handle bare control characters (U+0000–U+001F)
+			// that may appear inside JSON string values (e.g. description_html with \n in <pre>).
+			const text = await res.text();
+			try {
+				return JSON.parse(text);
+			} catch {
+				// Escape bare control characters inside JSON string values and retry.
+				const sanitized = text.replace(
+					/"(?:[^"\\]|\\.)*"/g,
+					(match) => match.replace(/[\x00-\x1F]/g, (c) => {
+						const hex = c.charCodeAt(0).toString(16).padStart(4, "0");
+						return `\\u${hex}`;
+					}),
+				);
+				return JSON.parse(sanitized);
+			}
 		},
 		catch: (e) => (e instanceof Error ? e : new Error(String(e))),
 	});
