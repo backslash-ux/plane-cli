@@ -291,10 +291,10 @@ describe("issueUpdate", () => {
 					ref: "ACME-29",
 					state: { _tag: "Some", value: "completed" },
 					priority: { _tag: "None" },
+					title: { _tag: "None" },
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
 					label: { _tag: "None" },
-					title: { _tag: "None" },
 					noAssignee: false,
 				}),
 			);
@@ -333,10 +333,10 @@ describe("issueUpdate", () => {
 					ref: "ACME-29",
 					state: { _tag: "None" },
 					priority: { _tag: "Some", value: "urgent" },
+					title: { _tag: "None" },
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
 					label: { _tag: "None" },
-					title: { _tag: "None" },
 					noAssignee: false,
 				}),
 			);
@@ -355,10 +355,10 @@ describe("issueUpdate", () => {
 					ref: "ACME-29",
 					state: { _tag: "None" },
 					priority: { _tag: "None" },
+					title: { _tag: "None" },
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
 					label: { _tag: "None" },
-					title: { _tag: "None" },
 					noAssignee: false,
 				}),
 			),
@@ -367,6 +367,41 @@ describe("issueUpdate", () => {
 		if (result._tag === "Left") {
 			expect((result.left as Error).message).toContain("Nothing to update");
 		}
+	});
+
+	it("updates title", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "New title",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueUpdate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueUpdate as any).handler({
+				ref: "ACME-29",
+				state: { _tag: "None" },
+				priority: { _tag: "None" },
+				title: { _tag: "Some", value: "New title" },
+				description: { _tag: "None" },
+				assignee: { _tag: "None" },
+				label: { _tag: "None" },
+				noAssignee: false,
+			}),
+		);
+
+		expect((patchedBody as any).name).toBe("New title");
 	});
 });
 
@@ -614,10 +649,10 @@ describe("issueUpdate description", () => {
 				ref: "ACME-29",
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
+				title: { _tag: "None" },
 				description: { _tag: "Some", value: "Updated description" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
-				title: { _tag: "None" },
 				noAssignee: false,
 			}),
 		);
@@ -651,10 +686,10 @@ describe("issueUpdate description", () => {
 				ref: "ACME-29",
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
+				title: { _tag: "None" },
 				description: { _tag: "Some", value: "<b>bold</b>" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
-				title: { _tag: "None" },
 				noAssignee: false,
 			}),
 		);
@@ -689,10 +724,10 @@ describe("issueUpdate assignee", () => {
 				ref: "ACME-29",
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
+				title: { _tag: "None" },
 				description: { _tag: "None" },
 				assignee: { _tag: "Some", value: "Alice" },
 				label: { _tag: "None" },
-				title: { _tag: "None" },
 				noAssignee: false,
 			}),
 		);
@@ -724,10 +759,10 @@ describe("issueUpdate assignee", () => {
 				ref: "ACME-29",
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
+				title: { _tag: "None" },
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
-				title: { _tag: "None" },
 				noAssignee: true,
 			}),
 		);
@@ -759,10 +794,10 @@ describe("issueUpdate assignee", () => {
 				ref: "ACME-29",
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
+				title: { _tag: "None" },
 				description: { _tag: "None" },
 				assignee: { _tag: "Some", value: "bob@example.com" },
 				label: { _tag: "None" },
-				title: { _tag: "None" },
 				noAssignee: false,
 			}),
 		);
@@ -832,10 +867,10 @@ describe("issueUpdate label", () => {
 				ref: "ACME-29",
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
+				title: { _tag: "None" },
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "Some", value: "bug" },
-				title: { _tag: "None" },
 				noAssignee: false,
 			}),
 		);
