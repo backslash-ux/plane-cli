@@ -11,9 +11,10 @@ import {
 	WorklogSchema,
 } from "../config.js";
 import {
-	parseIssueRef,
 	findIssueBySeq,
+	getMemberId,
 	getStateId,
+	parseIssueRef,
 	resolveProject,
 } from "../resolve.js";
 import { jsonMode, xmlMode, toXml } from "../output.js";
@@ -51,15 +52,26 @@ const descriptionOption = Options.optional(Options.text("description")).pipe(
 	Options.withDescription("Issue description (plain text, stored as HTML)"),
 );
 
+const assigneeOption = Options.optional(Options.text("assignee")).pipe(
+	Options.withDescription("Assign to a member (display name, email, or UUID)"),
+);
+
+const noAssigneeOption = Options.boolean("no-assignee").pipe(
+	Options.withDescription("Clear all assignees"),
+	Options.withDefault(false),
+);
+
 export const issueUpdate = Command.make(
 	"update",
 	{
 		state: stateOption,
 		priority: priorityOption,
 		description: descriptionOption,
+		assignee: assigneeOption,
+		noAssignee: noAssigneeOption,
 		ref: refArg,
 	},
-	({ ref, state, priority, description }) =>
+	({ ref, state, priority, description, assignee, noAssignee }) =>
 		Effect.gen(function* () {
 			const { projectId, seq } = yield* parseIssueRef(ref);
 			const issue = yield* findIssueBySeq(projectId, seq);
@@ -76,11 +88,17 @@ export const issueUpdate = Command.make(
 				const escaped = escapeHtmlText(description.value);
 				body["description_html"] = `<p>${escaped}</p>`;
 			}
+			if (noAssignee) {
+				body["assignees"] = [];
+			} else if (assignee._tag === "Some") {
+				const memberId = yield* getMemberId(assignee.value);
+				body["assignees"] = [memberId];
+			}
 
 			if (Object.keys(body).length === 0) {
 				yield* Effect.fail(
 					new Error(
-						"Nothing to update. Specify --state, --priority, or --description",
+						"Nothing to update. Specify --state, --priority, --description, --assignee, or --no-assignee",
 					),
 				);
 			}
@@ -96,7 +114,7 @@ export const issueUpdate = Command.make(
 		}),
 ).pipe(
 	Command.withDescription(
-		'Update an issue\'s state, priority, or description. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --description "New description" PROJ-29\n  plane issue update --state started --priority medium OPS-3',
+		'Update an issue\'s state, priority, description, or assignee. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --assignee "Jane Doe" PROJ-29\n  plane issue update --no-assignee PROJ-29\n  plane issue update --description "New description" PROJ-29',
 	),
 );
 
@@ -148,16 +166,21 @@ const createDescriptionOption = Options.optional(
 	Options.withDescription("Issue description (plain text, stored as HTML)"),
 );
 
+const createAssigneeOption = Options.optional(Options.text("assignee")).pipe(
+	Options.withDescription("Assign to a member (display name, email, or UUID)"),
+);
+
 export const issueCreate = Command.make(
 	"create",
 	{
 		priority: createPriorityOption,
 		state: createStateOption,
 		description: createDescriptionOption,
+		assignee: createAssigneeOption,
 		project: projectRefArg,
 		title: titleArg,
 	},
-	({ project, title, priority, state, description }) =>
+	({ project, title, priority, state, description, assignee }) =>
 		Effect.gen(function* () {
 			const { key, id: projectId } = yield* resolveProject(project);
 			const body: Record<string, unknown> = { name: title };
@@ -168,6 +191,10 @@ export const issueCreate = Command.make(
 				const escaped = escapeHtmlText(description.value);
 				body["description_html"] = `<p>${escaped}</p>`;
 			}
+			if (assignee._tag === "Some") {
+				const memberId = yield* getMemberId(assignee.value);
+				body["assignees"] = [memberId];
+			}
 			const raw = yield* api.post(`projects/${projectId}/issues/`, body);
 			const created = yield* decodeOrFail(IssueSchema, raw);
 			yield* Console.log(
@@ -176,7 +203,7 @@ export const issueCreate = Command.make(
 		}),
 ).pipe(
 	Command.withDescription(
-		'Create a new issue in a project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"',
+		'Create a new issue in a project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"\n  plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"',
 	),
 );
 

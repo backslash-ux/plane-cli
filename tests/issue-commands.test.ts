@@ -41,6 +41,15 @@ const STATES = [
 	{ id: "s-todo", name: "Todo", group: "unstarted" },
 ];
 
+const MEMBERS = [
+	{
+		id: "m-alice",
+		display_name: "Alice",
+		email: "alice@example.com",
+	},
+	{ id: "m-bob", display_name: "Bob", email: "bob@example.com" },
+];
+
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
@@ -50,6 +59,9 @@ const server = setupServer(
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/states/`, () =>
 		HttpResponse.json({ results: STATES }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
+		HttpResponse.json(MEMBERS),
 	),
 );
 
@@ -120,6 +132,8 @@ describe("issueUpdate", () => {
 					state: { _tag: "Some", value: "completed" },
 					priority: { _tag: "None" },
 					description: { _tag: "None" },
+					assignee: { _tag: "None" },
+					noAssignee: false,
 				}),
 			);
 		} finally {
@@ -158,6 +172,8 @@ describe("issueUpdate", () => {
 					state: { _tag: "None" },
 					priority: { _tag: "Some", value: "urgent" },
 					description: { _tag: "None" },
+					assignee: { _tag: "None" },
+					noAssignee: false,
 				}),
 			);
 		} finally {
@@ -176,6 +192,8 @@ describe("issueUpdate", () => {
 					state: { _tag: "None" },
 					priority: { _tag: "None" },
 					description: { _tag: "None" },
+					assignee: { _tag: "None" },
+					noAssignee: false,
 				}),
 			),
 		);
@@ -278,6 +296,7 @@ describe("issueCreate", () => {
 					priority: { _tag: "None" },
 					state: { _tag: "None" },
 					description: { _tag: "None" },
+					assignee: { _tag: "None" },
 				}),
 			);
 		} finally {
@@ -318,6 +337,7 @@ describe("issueCreate", () => {
 					priority: { _tag: "Some", value: "high" },
 					state: { _tag: "Some", value: "completed" },
 					description: { _tag: "None" },
+					assignee: { _tag: "None" },
 				}),
 			);
 		} finally {
@@ -355,6 +375,7 @@ describe("issueCreate description", () => {
 				priority: { _tag: "None" },
 				state: { _tag: "None" },
 				description: { _tag: "Some", value: "Some context here" },
+				assignee: { _tag: "None" },
 			}),
 		);
 
@@ -389,6 +410,7 @@ describe("issueCreate description", () => {
 				priority: { _tag: "None" },
 				state: { _tag: "None" },
 				description: { _tag: "Some", value: "<script>alert(1)</script>" },
+				assignee: { _tag: "None" },
 			}),
 		);
 
@@ -423,6 +445,8 @@ describe("issueUpdate description", () => {
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
 				description: { _tag: "Some", value: "Updated description" },
+				assignee: { _tag: "None" },
+				noAssignee: false,
 			}),
 		);
 
@@ -456,11 +480,149 @@ describe("issueUpdate description", () => {
 				state: { _tag: "None" },
 				priority: { _tag: "None" },
 				description: { _tag: "Some", value: "<b>bold</b>" },
+				assignee: { _tag: "None" },
+				noAssignee: false,
 			}),
 		);
 
 		expect((patchedBody as any).description_html).toContain("&lt;b&gt;");
 		expect((patchedBody as any).description_html).not.toContain("<b>");
+	});
+});
+
+describe("issueUpdate assignee", () => {
+	it("sets assignee by display name", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueUpdate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueUpdate as any).handler({
+				ref: "ACME-29",
+				state: { _tag: "None" },
+				priority: { _tag: "None" },
+				description: { _tag: "None" },
+				assignee: { _tag: "Some", value: "Alice" },
+				noAssignee: false,
+			}),
+		);
+
+		expect((patchedBody as any).assignees).toEqual(["m-alice"]);
+	});
+
+	it("clears assignees with --no-assignee", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueUpdate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueUpdate as any).handler({
+				ref: "ACME-29",
+				state: { _tag: "None" },
+				priority: { _tag: "None" },
+				description: { _tag: "None" },
+				assignee: { _tag: "None" },
+				noAssignee: true,
+			}),
+		);
+
+		expect((patchedBody as any).assignees).toEqual([]);
+	});
+
+	it("resolves assignee by email", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueUpdate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueUpdate as any).handler({
+				ref: "ACME-29",
+				state: { _tag: "None" },
+				priority: { _tag: "None" },
+				description: { _tag: "None" },
+				assignee: { _tag: "Some", value: "bob@example.com" },
+				noAssignee: false,
+			}),
+		);
+
+		expect((patchedBody as any).assignees).toEqual(["m-bob"]);
+	});
+});
+
+describe("issueCreate assignee", () => {
+	it("sets assignee by display name on create", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json({
+						id: "new-assignee",
+						sequence_id: 300,
+						name: (postedBody as any).name,
+						priority: "none",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueCreate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueCreate as any).handler({
+				project: "ACME",
+				title: "Assigned issue",
+				priority: { _tag: "None" },
+				state: { _tag: "None" },
+				description: { _tag: "None" },
+				assignee: { _tag: "Some", value: "Alice" },
+			}),
+		);
+
+		expect((postedBody as any).assignees).toEqual(["m-alice"]);
 	});
 });
 

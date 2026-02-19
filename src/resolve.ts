@@ -2,8 +2,9 @@ import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
 import {
 	IssuesResponseSchema,
-	StatesResponseSchema,
+	MembersResponseSchema,
 	ProjectsResponseSchema,
+	StatesResponseSchema,
 } from "./config.js";
 
 // Cache project list within a process invocation
@@ -71,6 +72,27 @@ export function findIssueBySeq(projectId: string, seq: number) {
 		const issue = results.find((i) => i.sequence_id === seq);
 		if (!issue) return yield* Effect.fail(new Error(`Issue #${seq} not found`));
 		return issue;
+	});
+}
+
+export function getMemberId(nameEmailOrId: string) {
+	return Effect.gen(function* () {
+		const results = yield* decodeOrFail(
+			MembersResponseSchema,
+			yield* api.get("members/"),
+		);
+		const lower = nameEmailOrId.toLowerCase();
+		const member = results.find(
+			(m) =>
+				m.id === nameEmailOrId ||
+				m.display_name.toLowerCase() === lower ||
+				(m.email ?? "").toLowerCase() === lower,
+		);
+		if (!member)
+			return yield* Effect.fail(
+				new Error(`Member not found: ${nameEmailOrId}`),
+			);
+		return member.id;
 	});
 }
 
