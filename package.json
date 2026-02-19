@@ -1,6 +1,6 @@
 {
   "name": "@aaronshaf/plane",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI for the Plane project management API",
   "keywords": [
     "plane",
