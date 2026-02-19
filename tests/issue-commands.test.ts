@@ -295,6 +295,8 @@ describe("issueUpdate", () => {
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
 					label: { _tag: "None" },
+					estimate: { _tag: "None" },
+
 					noAssignee: false,
 				}),
 			);
@@ -337,6 +339,8 @@ describe("issueUpdate", () => {
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
 					label: { _tag: "None" },
+					estimate: { _tag: "None" },
+
 					noAssignee: false,
 				}),
 			);
@@ -359,6 +363,8 @@ describe("issueUpdate", () => {
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
 					label: { _tag: "None" },
+					estimate: { _tag: "None" },
+
 					noAssignee: false,
 				}),
 			),
@@ -397,6 +403,8 @@ describe("issueUpdate", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
+				estimate: { _tag: "None" },
+
 				noAssignee: false,
 			}),
 		);
@@ -498,6 +506,7 @@ describe("issueCreate", () => {
 					state: { _tag: "None" },
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
+					estimate: { _tag: "None" },
 					label: { _tag: "None" },
 				}),
 			);
@@ -540,6 +549,7 @@ describe("issueCreate", () => {
 					state: { _tag: "Some", value: "completed" },
 					description: { _tag: "None" },
 					assignee: { _tag: "None" },
+					estimate: { _tag: "None" },
 					label: { _tag: "None" },
 				}),
 			);
@@ -579,6 +589,7 @@ describe("issueCreate description", () => {
 				state: { _tag: "None" },
 				description: { _tag: "Some", value: "Some context here" },
 				assignee: { _tag: "None" },
+				estimate: { _tag: "None" },
 				label: { _tag: "None" },
 			}),
 		);
@@ -615,6 +626,7 @@ describe("issueCreate description", () => {
 				state: { _tag: "None" },
 				description: { _tag: "Some", value: "<script>alert(1)</script>" },
 				assignee: { _tag: "None" },
+				estimate: { _tag: "None" },
 				label: { _tag: "None" },
 			}),
 		);
@@ -653,6 +665,8 @@ describe("issueUpdate description", () => {
 				description: { _tag: "Some", value: "Updated description" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
+				estimate: { _tag: "None" },
+
 				noAssignee: false,
 			}),
 		);
@@ -690,6 +704,8 @@ describe("issueUpdate description", () => {
 				description: { _tag: "Some", value: "<b>bold</b>" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
+				estimate: { _tag: "None" },
+
 				noAssignee: false,
 			}),
 		);
@@ -728,6 +744,8 @@ describe("issueUpdate assignee", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "Some", value: "Alice" },
 				label: { _tag: "None" },
+				estimate: { _tag: "None" },
+
 				noAssignee: false,
 			}),
 		);
@@ -763,6 +781,8 @@ describe("issueUpdate assignee", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
+				estimate: { _tag: "None" },
+
 				noAssignee: true,
 			}),
 		);
@@ -798,6 +818,8 @@ describe("issueUpdate assignee", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "Some", value: "bob@example.com" },
 				label: { _tag: "None" },
+				estimate: { _tag: "None" },
+
 				noAssignee: false,
 			}),
 		);
@@ -834,6 +856,7 @@ describe("issueCreate assignee", () => {
 				state: { _tag: "None" },
 				description: { _tag: "None" },
 				assignee: { _tag: "Some", value: "Alice" },
+				estimate: { _tag: "None" },
 				label: { _tag: "None" },
 			}),
 		);
@@ -871,6 +894,8 @@ describe("issueUpdate label", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "Some", value: "bug" },
+				estimate: { _tag: "None" },
+
 				noAssignee: false,
 			}),
 		);
@@ -908,6 +933,7 @@ describe("issueCreate label", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "Some", value: "Bug" },
+				estimate: { _tag: "None" },
 			}),
 		);
 
@@ -941,6 +967,81 @@ describe("issueDelete", () => {
 
 		expect(deleted).toBe(true);
 		expect(logs.join("\n")).toContain("Deleted ACME-29");
+	});
+});
+
+describe("issueUpdate estimate", () => {
+	it("sets estimate on update", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueUpdate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueUpdate as any).handler({
+				ref: "ACME-29",
+				state: { _tag: "None" },
+				priority: { _tag: "None" },
+				title: { _tag: "None" },
+				description: { _tag: "None" },
+				assignee: { _tag: "None" },
+				label: { _tag: "None" },
+				estimate: { _tag: "Some", value: 3 },
+				noAssignee: false,
+			}),
+		);
+
+		expect((patchedBody as any).estimate_point).toBe(3);
+	});
+});
+
+describe("issueCreate estimate", () => {
+	it("sets estimate on create", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json({
+						id: "new-est",
+						sequence_id: 400,
+						name: (postedBody as any).name,
+						priority: "none",
+						state: "s1",
+					});
+				},
+			),
+		);
+
+		const { issueCreate } = await import("@/commands/issue");
+		await Effect.runPromise(
+			(issueCreate as any).handler({
+				project: "ACME",
+				title: "Estimated issue",
+				priority: { _tag: "None" },
+				state: { _tag: "None" },
+				description: { _tag: "None" },
+				assignee: { _tag: "None" },
+				label: { _tag: "None" },
+				estimate: { _tag: "Some", value: 5 },
+			}),
+		);
+
+		expect((postedBody as any).estimate_point).toBe(5);
 	});
 });
 

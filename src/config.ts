@@ -18,6 +18,7 @@ export const IssueSchema = Schema.Struct({
 	state: Schema.Union(Schema.String, StateSchema),
 	assignees: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 	description_html: Schema.optional(Schema.NullOr(Schema.String)),
+	estimate_point: Schema.optional(Schema.NullOr(Schema.Number)),
 });
 export type Issue = typeof IssueSchema.Type;
 
