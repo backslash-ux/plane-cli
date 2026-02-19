@@ -55,7 +55,13 @@ export const issuesList = Command.make(
 			}
 
 			if (assignee._tag === "Some") {
-				const memberId = yield* getMemberId(assignee.value);
+				const isUuid =
+					/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+						assignee.value,
+					);
+				const memberId = isUuid
+					? assignee.value
+					: yield* getMemberId(assignee.value);
 				filtered = filtered.filter(
 					(i) => Array.isArray(i.assignees) && i.assignees.includes(memberId),
 				);
