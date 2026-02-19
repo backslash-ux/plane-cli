@@ -3,6 +3,7 @@ import { Console, Effect } from "effect"
 import { api, decodeOrFail } from "../api.js"
 import { PagesResponseSchema, PageSchema } from "../config.js"
 import { resolveProject } from "../resolve.js"
+import { jsonMode, xmlMode, toXml } from "../output.js"
 
 const projectArg = Args.text({ name: "project" }).pipe(
   Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
@@ -15,6 +16,8 @@ export const pagesList = Command.make("list", { project: projectArg }, ({ projec
     const { id } = yield* resolveProject(project)
     const raw = yield* api.get(`projects/${id}/pages/`)
     const { results } = yield* decodeOrFail(PagesResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No pages")
       return

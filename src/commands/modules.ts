@@ -3,6 +3,7 @@ import { Console, Effect } from "effect"
 import { api, decodeOrFail } from "../api.js"
 import { ModulesResponseSchema, ModuleIssuesResponseSchema } from "../config.js"
 import { resolveProject, parseIssueRef, findIssueBySeq } from "../resolve.js"
+import { jsonMode, xmlMode, toXml } from "../output.js"
 
 const projectArg = Args.text({ name: "project" }).pipe(
   Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
@@ -19,6 +20,8 @@ export const modulesList = Command.make("list", { project: projectArg }, ({ proj
     const { id } = yield* resolveProject(project)
     const raw = yield* api.get(`projects/${id}/modules/`)
     const { results } = yield* decodeOrFail(ModulesResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No modules found")
       return
@@ -45,6 +48,8 @@ export const moduleIssuesList = Command.make(
       const { key, id } = yield* resolveProject(project)
       const raw = yield* api.get(`projects/${id}/modules/${moduleId}/module-issues/`)
       const { results } = yield* decodeOrFail(ModuleIssuesResponseSchema, raw)
+      if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+      if (xmlMode) { yield* Console.log(toXml(results)); return }
       if (results.length === 0) {
         yield* Console.log("No issues in module")
         return

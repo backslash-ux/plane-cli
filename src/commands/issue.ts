@@ -11,6 +11,7 @@ import {
   WorklogSchema,
 } from "../config.js"
 import { parseIssueRef, findIssueBySeq, getStateId, resolveProject } from "../resolve.js"
+import { jsonMode, xmlMode, toXml } from "../output.js"
 
 const refArg = Args.text({ name: "ref" }).pipe(
   Args.withDescription("Issue reference, e.g. PROJ-29"),
@@ -142,6 +143,8 @@ export const issueActivity = Command.make("activity", { ref: refArg }, ({ ref })
     const issue = yield* findIssueBySeq(projectId, seq)
     const raw = yield* api.get(`projects/${projectId}/issues/${issue.id}/activities/`)
     const { results } = yield* decodeOrFail(ActivitiesResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No activity found")
       return
@@ -172,6 +175,8 @@ export const issueLinkList = Command.make("list", { ref: refArg }, ({ ref }) =>
     const issue = yield* findIssueBySeq(projectId, seq)
     const raw = yield* api.get(`projects/${projectId}/issues/${issue.id}/issue-links/`)
     const { results } = yield* decodeOrFail(IssueLinksResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No links")
       return
@@ -245,6 +250,8 @@ export const issueCommentsList = Command.make("list", { ref: refArg }, ({ ref })
     const issue = yield* findIssueBySeq(projectId, seq)
     const raw = yield* api.get(`projects/${projectId}/issues/${issue.id}/comments/`)
     const { results } = yield* decodeOrFail(CommentsResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No comments")
       return
@@ -320,6 +327,8 @@ export const issueWorklogsList = Command.make("list", { ref: refArg }, ({ ref })
     const issue = yield* findIssueBySeq(projectId, seq)
     const raw = yield* api.get(`projects/${projectId}/issues/${issue.id}/worklogs/`)
     const { results } = yield* decodeOrFail(WorklogsResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No worklogs")
       return

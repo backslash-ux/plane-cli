@@ -5,6 +5,7 @@ import { IssuesResponseSchema } from "../config.js"
 import { formatIssue } from "../format.js"
 import { resolveProject } from "../resolve.js"
 import type { State } from "../config.js"
+import { jsonMode, xmlMode, toXml } from "../output.js"
 
 const projectArg = Args.text({ name: "project" }).pipe(
   Args.withDescription("Project identifier — see 'plane projects list' for available identifiers"),
@@ -35,6 +36,8 @@ export const issuesList = Command.make(
             })
           : results
 
+      if (jsonMode) { yield* Console.log(JSON.stringify(filtered, null, 2)); return }
+      if (xmlMode) { yield* Console.log(toXml(filtered)); return }
       yield* Console.log(filtered.map((i) => formatIssue(i, key)).join("\n"))
     }),
 ).pipe(

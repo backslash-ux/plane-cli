@@ -51,9 +51,10 @@ ALL SUBCOMMANDS
   labels list         List labels for a project
   members list        List members of a project
 
-FOR AI AGENTS
-  - All list commands output one record per line, tab-separated
-  - 'plane issue get PROJ-N' outputs full JSON — pipe to jq for field extraction
+FOR AI AGENTS / BOTS
+  - Add --json to any list command for JSON output (array of objects)
+  - Add --xml to any list command for XML output
+  - 'plane issue get PROJ-N' always outputs full JSON
   - Use PLANE_API_TOKEN / PLANE_HOST / PLANE_WORKSPACE env vars to avoid 'plane init'
   - Full Plane REST API reference (180+ endpoints):
     https://developers.plane.so/api-reference/introduction`,

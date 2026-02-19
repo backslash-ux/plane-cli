@@ -3,8 +3,8 @@
 import { execSync } from "child_process"
 
 const THRESHOLDS = {
-  lines: 90,
-  functions: 90,
+  lines: 98,
+  functions: 98,
 }
 
 console.log("Running tests with coverage...\n")

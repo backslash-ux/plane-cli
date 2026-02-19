@@ -3,6 +3,7 @@ import { Console, Effect } from "effect"
 import { api, decodeOrFail } from "../api.js"
 import { IntakeIssuesResponseSchema } from "../config.js"
 import { resolveProject } from "../resolve.js"
+import { jsonMode, xmlMode, toXml } from "../output.js"
 
 const projectArg = Args.text({ name: "project" }).pipe(
   Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
@@ -24,6 +25,8 @@ export const intakeList = Command.make("list", { project: projectArg }, ({ proje
     const { id } = yield* resolveProject(project)
     const raw = yield* api.get(`projects/${id}/intake-issues/`)
     const { results } = yield* decodeOrFail(IntakeIssuesResponseSchema, raw)
+    if (jsonMode) { yield* Console.log(JSON.stringify(results, null, 2)); return }
+    if (xmlMode) { yield* Console.log(toXml(results)); return }
     if (results.length === 0) {
       yield* Console.log("No intake issues")
       return
