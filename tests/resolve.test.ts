@@ -15,6 +15,7 @@ import {
 	parseIssueRef,
 	findIssueBySeq,
 	getStateId,
+	getMemberId,
 	_clearProjectCache,
 } from "@/resolve";
 
@@ -50,6 +51,10 @@ const STATES = [
 	{ id: "s-done", name: "Done", group: "completed" },
 ];
 
+const MEMBERS = [
+	{ id: "m1", display_name: "Alice", email: "alice@example.com" },
+];
+
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
@@ -59,6 +64,9 @@ const server = setupServer(
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/states/`, () =>
 		HttpResponse.json({ results: STATES }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
+		HttpResponse.json(MEMBERS),
 	),
 );
 
@@ -203,6 +211,35 @@ describe("getStateId", () => {
 		expect(result._tag).toBe("Left");
 		if (result._tag === "Left") {
 			expect(result.left.message).toContain("State not found");
+		}
+	});
+});
+
+describe("getMemberId", () => {
+	it("finds member by display name", async () => {
+		const id = await Effect.runPromise(getMemberId("Alice"));
+		expect(id).toBe("m1");
+	});
+
+	it("finds member by email", async () => {
+		const id = await Effect.runPromise(getMemberId("alice@example.com"));
+		expect(id).toBe("m1");
+	});
+
+	it("finds member by id", async () => {
+		const id = await Effect.runPromise(getMemberId("m1"));
+		expect(id).toBe("m1");
+	});
+
+	it("fails when member not found", async () => {
+		const result = await Effect.runPromise(
+			Effect.either(getMemberId("nonexistent")),
+		);
+		expect(result._tag).toBe("Left");
+		if (result._tag === "Left") {
+			expect((result.left as Error).message).toContain(
+				"Member not found: nonexistent",
+			);
 		}
 	});
 });
