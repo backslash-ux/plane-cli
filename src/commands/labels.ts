@@ -53,8 +53,12 @@ export const labelsCreate = Command.make(
 	({ project, name, color }) =>
 		Effect.gen(function* () {
 			const { id } = yield* resolveProject(project);
-			const body: Record<string, unknown> = { name };
-			if (color._tag === "Some") body["color"] = color.value;
+			interface LabelPayload {
+				name: string;
+				color?: string;
+			}
+			const body: LabelPayload = { name };
+			if (color._tag === "Some") body.color = color.value;
 			const raw = yield* api.post(`projects/${id}/labels/`, body);
 			const label = yield* decodeOrFail(LabelSchema, raw);
 			yield* Console.log(`Created label: ${label.name} (${label.id})`);

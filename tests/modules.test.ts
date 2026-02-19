@@ -74,15 +74,13 @@ afterEach(() => {
 
 describe("modulesList", () => {
 	it("lists modules for a project", async () => {
-		const { modulesList } = await import("@/commands/modules");
+		const { modulesListHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(modulesList as any).handler({ project: "ACME" }),
-			);
+			await Effect.runPromise(modulesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -103,15 +101,13 @@ describe("modulesList", () => {
 			),
 		);
 
-		const { modulesList } = await import("@/commands/modules");
+		const { modulesListHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(modulesList as any).handler({ project: "ACME" }),
-			);
+			await Effect.runPromise(modulesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -130,15 +126,13 @@ describe("modulesList", () => {
 			),
 		);
 
-		const { modulesList } = await import("@/commands/modules");
+		const { modulesListHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(modulesList as any).handler({ project: "ACME" }),
-			);
+			await Effect.runPromise(modulesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -149,14 +143,14 @@ describe("modulesList", () => {
 
 describe("moduleIssuesList", () => {
 	it("lists issues in a module with detail", async () => {
-		const { moduleIssuesList } = await import("@/commands/modules");
+		const { moduleIssuesListHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(moduleIssuesList as any).handler({
+				moduleIssuesListHandler({
 					project: "ACME",
 					moduleId: "mod1",
 				}),
@@ -180,14 +174,14 @@ describe("moduleIssuesList", () => {
 			),
 		);
 
-		const { moduleIssuesList } = await import("@/commands/modules");
+		const { moduleIssuesListHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(moduleIssuesList as any).handler({
+				moduleIssuesListHandler({
 					project: "ACME",
 					moduleId: "mod1",
 				}),
@@ -207,14 +201,14 @@ describe("moduleIssuesList", () => {
 			),
 		);
 
-		const { moduleIssuesList } = await import("@/commands/modules");
+		const { moduleIssuesListHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(moduleIssuesList as any).handler({
+				moduleIssuesListHandler({
 					project: "ACME",
 					moduleId: "mod1",
 				}),
@@ -240,14 +234,14 @@ describe("moduleIssuesAdd", () => {
 			),
 		);
 
-		const { moduleIssuesAdd } = await import("@/commands/modules");
+		const { moduleIssuesAddHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(moduleIssuesAdd as any).handler({
+				moduleIssuesAddHandler({
 					project: "ACME",
 					moduleId: "mod1",
 					ref: "ACME-29",
@@ -257,7 +251,7 @@ describe("moduleIssuesAdd", () => {
 			console.log = orig;
 		}
 
-		expect((postedBody as any).issues).toContain("i1");
+		expect((postedBody as { issues?: string[] }).issues).toContain("i1");
 		expect(logs.join("\n")).toContain("ACME-29");
 		expect(logs.join("\n")).toContain("mod1");
 	});
@@ -276,14 +270,14 @@ describe("moduleIssuesRemove", () => {
 			),
 		);
 
-		const { moduleIssuesRemove } = await import("@/commands/modules");
+		const { moduleIssuesRemoveHandler } = await import("@/commands/modules");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(moduleIssuesRemove as any).handler({
+				moduleIssuesRemoveHandler({
 					project: "ACME",
 					moduleId: "mod1",
 					moduleIssueId: "mi1",

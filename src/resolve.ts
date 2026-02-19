@@ -7,12 +7,13 @@ import {
 	ProjectsResponseSchema,
 	StatesResponseSchema,
 } from "./config.js";
+import type { Issue } from "./config.js";
 
 // Cache project list within a process invocation
 let _projectCache: Record<string, string> | null = null;
 
 /** Clear the project cache — for use in tests only */
-export function _clearProjectCache() {
+export function _clearProjectCache(): void {
 	_projectCache = null;
 }
 
@@ -66,7 +67,10 @@ export function parseIssueRef(
 	);
 }
 
-export function findIssueBySeq(projectId: string, seq: number) {
+export function findIssueBySeq(
+	projectId: string,
+	seq: number,
+): Effect.Effect<Issue, Error> {
 	return Effect.gen(function* () {
 		const raw = yield* api.get(`projects/${projectId}/issues/`);
 		const { results } = yield* decodeOrFail(IssuesResponseSchema, raw);
@@ -76,7 +80,9 @@ export function findIssueBySeq(projectId: string, seq: number) {
 	});
 }
 
-export function getMemberId(nameEmailOrId: string) {
+export function getMemberId(
+	nameEmailOrId: string,
+): Effect.Effect<string, Error> {
 	return Effect.gen(function* () {
 		const results = yield* decodeOrFail(
 			MembersResponseSchema,
@@ -97,7 +103,10 @@ export function getMemberId(nameEmailOrId: string) {
 	});
 }
 
-export function getStateId(projectId: string, nameOrGroup: string) {
+export function getStateId(
+	projectId: string,
+	nameOrGroup: string,
+): Effect.Effect<string, Error> {
 	return Effect.gen(function* () {
 		const raw = yield* api.get(`projects/${projectId}/states/`);
 		const { results } = yield* decodeOrFail(StatesResponseSchema, raw);
@@ -111,7 +120,10 @@ export function getStateId(projectId: string, nameOrGroup: string) {
 	});
 }
 
-export function getLabelId(projectId: string, name: string) {
+export function getLabelId(
+	projectId: string,
+	name: string,
+): Effect.Effect<string, Error> {
 	return Effect.gen(function* () {
 		const raw = yield* api.get(`projects/${projectId}/labels/`);
 		const { results } = yield* decodeOrFail(LabelsResponseSchema, raw);

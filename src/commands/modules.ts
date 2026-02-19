@@ -18,32 +18,35 @@ const moduleIdArg = Args.text({ name: "module-id" }).pipe(
 
 // --- modules list ---
 
+export function modulesListHandler({ project }: { project: string }) {
+	return Effect.gen(function* () {
+		const { id } = yield* resolveProject(project);
+		const raw = yield* api.get(`projects/${id}/modules/`);
+		const { results } = yield* decodeOrFail(ModulesResponseSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify(results, null, 2));
+			return;
+		}
+		if (xmlMode) {
+			yield* Console.log(toXml(results));
+			return;
+		}
+		if (results.length === 0) {
+			yield* Console.log("No modules found");
+			return;
+		}
+		const lines = results.map((m) => {
+			const status = (m.status ?? "?").padEnd(12);
+			return `${m.id}  ${status}  ${m.name}`;
+		});
+		yield* Console.log(lines.join("\n"));
+	});
+}
+
 export const modulesList = Command.make(
 	"list",
 	{ project: projectArg },
-	({ project }) =>
-		Effect.gen(function* () {
-			const { id } = yield* resolveProject(project);
-			const raw = yield* api.get(`projects/${id}/modules/`);
-			const { results } = yield* decodeOrFail(ModulesResponseSchema, raw);
-			if (jsonMode) {
-				yield* Console.log(JSON.stringify(results, null, 2));
-				return;
-			}
-			if (xmlMode) {
-				yield* Console.log(toXml(results));
-				return;
-			}
-			if (results.length === 0) {
-				yield* Console.log("No modules found");
-				return;
-			}
-			const lines = results.map((m) => {
-				const status = (m.status ?? "?").padEnd(12);
-				return `${m.id}  ${status}  ${m.name}`;
-			});
-			yield* Console.log(lines.join("\n"));
-		}),
+	modulesListHandler,
 ).pipe(
 	Command.withDescription(
 		"List modules for a project. Shows module UUID, status, and name.\n\nExample:\n  plane modules list PROJ",
@@ -52,37 +55,46 @@ export const modulesList = Command.make(
 
 // --- modules issues list ---
 
+export function moduleIssuesListHandler({
+	project,
+	moduleId,
+}: {
+	project: string;
+	moduleId: string;
+}) {
+	return Effect.gen(function* () {
+		const { key, id } = yield* resolveProject(project);
+		const raw = yield* api.get(
+			`projects/${id}/modules/${moduleId}/module-issues/`,
+		);
+		const { results } = yield* decodeOrFail(ModuleIssuesResponseSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify(results, null, 2));
+			return;
+		}
+		if (xmlMode) {
+			yield* Console.log(toXml(results));
+			return;
+		}
+		if (results.length === 0) {
+			yield* Console.log("No issues in module");
+			return;
+		}
+		const lines = results.map((mi) => {
+			if (mi.issue_detail) {
+				const seq = String(mi.issue_detail.sequence_id).padStart(3, " ");
+				return `${key}-${seq}  ${mi.issue_detail.name}  (${mi.id})`;
+			}
+			return `${mi.issue}  (module-issue: ${mi.id})`;
+		});
+		yield* Console.log(lines.join("\n"));
+	});
+}
+
 export const moduleIssuesList = Command.make(
 	"list",
 	{ project: projectArg, moduleId: moduleIdArg },
-	({ project, moduleId }) =>
-		Effect.gen(function* () {
-			const { key, id } = yield* resolveProject(project);
-			const raw = yield* api.get(
-				`projects/${id}/modules/${moduleId}/module-issues/`,
-			);
-			const { results } = yield* decodeOrFail(ModuleIssuesResponseSchema, raw);
-			if (jsonMode) {
-				yield* Console.log(JSON.stringify(results, null, 2));
-				return;
-			}
-			if (xmlMode) {
-				yield* Console.log(toXml(results));
-				return;
-			}
-			if (results.length === 0) {
-				yield* Console.log("No issues in module");
-				return;
-			}
-			const lines = results.map((mi) => {
-				if (mi.issue_detail) {
-					const seq = String(mi.issue_detail.sequence_id).padStart(3, " ");
-					return `${key}-${seq}  ${mi.issue_detail.name}  (${mi.id})`;
-				}
-				return `${mi.issue}  (module-issue: ${mi.id})`;
-			});
-			yield* Console.log(lines.join("\n"));
-		}),
+	moduleIssuesListHandler,
 ).pipe(
 	Command.withDescription(
 		"List issues in a module.\n\nExample:\n  plane modules issues list PROJ <module-id>",
@@ -95,22 +107,33 @@ const issueRefArg = Args.text({ name: "ref" }).pipe(
 	Args.withDescription("Issue reference to add (e.g. PROJ-29)"),
 );
 
+export function moduleIssuesAddHandler({
+	project,
+	moduleId,
+	ref,
+}: {
+	project: string;
+	moduleId: string;
+	ref: string;
+}) {
+	return Effect.gen(function* () {
+		const { id: projectId } = yield* resolveProject(project);
+		const { seq } = yield* parseIssueRef(ref);
+		const issue = yield* findIssueBySeq(projectId, seq);
+		yield* api.post(
+			`projects/${projectId}/modules/${moduleId}/module-issues/`,
+			{
+				issues: [issue.id],
+			},
+		);
+		yield* Console.log(`Added ${ref} to module ${moduleId}`);
+	});
+}
+
 export const moduleIssuesAdd = Command.make(
 	"add",
 	{ project: projectArg, moduleId: moduleIdArg, ref: issueRefArg },
-	({ project, moduleId, ref }) =>
-		Effect.gen(function* () {
-			const { id: projectId } = yield* resolveProject(project);
-			const { seq } = yield* parseIssueRef(ref);
-			const issue = yield* findIssueBySeq(projectId, seq);
-			yield* api.post(
-				`projects/${projectId}/modules/${moduleId}/module-issues/`,
-				{
-					issues: [issue.id],
-				},
-			);
-			yield* Console.log(`Added ${ref} to module ${moduleId}`);
-		}),
+	moduleIssuesAddHandler,
 ).pipe(
 	Command.withDescription(
 		"Add an issue to a module.\n\nExample:\n  plane modules issues add PROJ <module-id> PROJ-29",
@@ -125,6 +148,26 @@ const moduleIssueIdArg = Args.text({ name: "module-issue-id" }).pipe(
 	),
 );
 
+export function moduleIssuesRemoveHandler({
+	project,
+	moduleId,
+	moduleIssueId,
+}: {
+	project: string;
+	moduleId: string;
+	moduleIssueId: string;
+}) {
+	return Effect.gen(function* () {
+		const { id } = yield* resolveProject(project);
+		yield* api.delete(
+			`projects/${id}/modules/${moduleId}/module-issues/${moduleIssueId}/`,
+		);
+		yield* Console.log(
+			`Removed module-issue ${moduleIssueId} from module ${moduleId}`,
+		);
+	});
+}
+
 export const moduleIssuesRemove = Command.make(
 	"remove",
 	{
@@ -132,16 +175,7 @@ export const moduleIssuesRemove = Command.make(
 		moduleId: moduleIdArg,
 		moduleIssueId: moduleIssueIdArg,
 	},
-	({ project, moduleId, moduleIssueId }) =>
-		Effect.gen(function* () {
-			const { id } = yield* resolveProject(project);
-			yield* api.delete(
-				`projects/${id}/modules/${moduleId}/module-issues/${moduleIssueId}/`,
-			);
-			yield* Console.log(
-				`Removed module-issue ${moduleIssueId} from module ${moduleId}`,
-			);
-		}),
+	moduleIssuesRemoveHandler,
 ).pipe(
 	Command.withDescription(
 		"Remove an issue from a module using the module-issue join ID.\n\nExample:\n  plane modules issues remove PROJ <module-id> <module-issue-id>",

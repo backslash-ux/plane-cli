@@ -80,12 +80,12 @@ afterEach(() => {
 
 describe("cyclesList", () => {
 	it("lists cycles with status and dates", async () => {
-		const { cyclesList } = await import("@/commands/cycles");
+		const { cyclesListHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((cyclesList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(cyclesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -97,12 +97,12 @@ describe("cyclesList", () => {
 	});
 
 	it("shows em-dash for missing dates", async () => {
-		const { cyclesList } = await import("@/commands/cycles");
+		const { cyclesListHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((cyclesList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(cyclesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -116,12 +116,12 @@ describe("cyclesList", () => {
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
-		const { cyclesList } = await import("@/commands/cycles");
+		const { cyclesListHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((cyclesList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(cyclesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -131,13 +131,13 @@ describe("cyclesList", () => {
 
 describe("cycleIssuesList", () => {
 	it("lists issues in a cycle", async () => {
-		const { cycleIssuesList } = await import("@/commands/cycles");
+		const { cycleIssuesListHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(cycleIssuesList as any).handler({ project: "ACME", cycleId: "cyc1" }),
+				cycleIssuesListHandler({ project: "ACME", cycleId: "cyc1" }),
 			);
 		} finally {
 			console.log = orig;
@@ -156,13 +156,13 @@ describe("cycleIssuesList", () => {
 					HttpResponse.json({ results: [{ id: "ci2", issue: "bare-uuid" }] }),
 			),
 		);
-		const { cycleIssuesList } = await import("@/commands/cycles");
+		const { cycleIssuesListHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(cycleIssuesList as any).handler({ project: "ACME", cycleId: "cyc1" }),
+				cycleIssuesListHandler({ project: "ACME", cycleId: "cyc1" }),
 			);
 		} finally {
 			console.log = orig;
@@ -177,13 +177,13 @@ describe("cycleIssuesList", () => {
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
-		const { cycleIssuesList } = await import("@/commands/cycles");
+		const { cycleIssuesListHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(cycleIssuesList as any).handler({ project: "ACME", cycleId: "cyc1" }),
+				cycleIssuesListHandler({ project: "ACME", cycleId: "cyc1" }),
 			);
 		} finally {
 			console.log = orig;
@@ -204,13 +204,13 @@ describe("cycleIssuesAdd", () => {
 				},
 			),
 		);
-		const { cycleIssuesAdd } = await import("@/commands/cycles");
+		const { cycleIssuesAddHandler } = await import("@/commands/cycles");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(cycleIssuesAdd as any).handler({
+				cycleIssuesAddHandler({
 					project: "ACME",
 					cycleId: "cyc1",
 					ref: "ACME-29",
@@ -219,7 +219,7 @@ describe("cycleIssuesAdd", () => {
 		} finally {
 			console.log = orig;
 		}
-		expect((postedBody as any).issues).toContain("i1");
+		expect((postedBody as { issues?: string[] }).issues).toContain("i1");
 		expect(logs.join("\n")).toContain("ACME-29");
 		expect(logs.join("\n")).toContain("cyc1");
 	});

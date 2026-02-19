@@ -1,5 +1,5 @@
 import { Command, Options, Args } from "@effect/cli";
-import { Console, Effect } from "effect";
+import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { IssuesResponseSchema } from "../config.js";
 import { formatIssue } from "../format.js";
@@ -29,6 +29,62 @@ const priorityOption = Options.optional(
 	Options.choice("priority", ["urgent", "high", "medium", "low", "none"]),
 ).pipe(Options.withDescription("Filter by priority"));
 
+export function issuesListHandler({
+	project,
+	state,
+	assignee,
+	priority,
+}: {
+	project: string;
+	state: Option.Option<string>;
+	assignee: Option.Option<string>;
+	priority: Option.Option<string>;
+}) {
+	return Effect.gen(function* () {
+		const { key, id } = yield* resolveProject(project);
+		const raw = yield* api.get(`projects/${id}/issues/?order_by=sequence_id`);
+		const { results } = yield* decodeOrFail(IssuesResponseSchema, raw);
+
+		let filtered = results;
+
+		if (state._tag === "Some") {
+			filtered = filtered.filter((i) => {
+				const s = i.state as State | string;
+				if (typeof s !== "object") return false;
+				const val = state.value.toLowerCase();
+				return s.group === val || s.name.toLowerCase() === val;
+			});
+		}
+
+		if (assignee._tag === "Some") {
+			const isUuid =
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+					assignee.value,
+				);
+			const memberId = isUuid
+				? assignee.value
+				: yield* getMemberId(assignee.value);
+			filtered = filtered.filter(
+				(i) => Array.isArray(i.assignees) && i.assignees.includes(memberId),
+			);
+		}
+
+		if (priority._tag === "Some") {
+			filtered = filtered.filter((i) => i.priority === priority.value);
+		}
+
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify(filtered, null, 2));
+			return;
+		}
+		if (xmlMode) {
+			yield* Console.log(toXml(filtered));
+			return;
+		}
+		yield* Console.log(filtered.map((i) => formatIssue(i, key)).join("\n"));
+	});
+}
+
 export const issuesList = Command.make(
 	"list",
 	{
@@ -37,50 +93,7 @@ export const issuesList = Command.make(
 		priority: priorityOption,
 		project: projectArg,
 	},
-	({ project, state, assignee, priority }) =>
-		Effect.gen(function* () {
-			const { key, id } = yield* resolveProject(project);
-			const raw = yield* api.get(`projects/${id}/issues/?order_by=sequence_id`);
-			const { results } = yield* decodeOrFail(IssuesResponseSchema, raw);
-
-			let filtered = results;
-
-			if (state._tag === "Some") {
-				filtered = filtered.filter((i) => {
-					const s = i.state as State | string;
-					if (typeof s !== "object") return false;
-					const val = state.value.toLowerCase();
-					return s.group === val || s.name.toLowerCase() === val;
-				});
-			}
-
-			if (assignee._tag === "Some") {
-				const isUuid =
-					/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-						assignee.value,
-					);
-				const memberId = isUuid
-					? assignee.value
-					: yield* getMemberId(assignee.value);
-				filtered = filtered.filter(
-					(i) => Array.isArray(i.assignees) && i.assignees.includes(memberId),
-				);
-			}
-
-			if (priority._tag === "Some") {
-				filtered = filtered.filter((i) => i.priority === priority.value);
-			}
-
-			if (jsonMode) {
-				yield* Console.log(JSON.stringify(filtered, null, 2));
-				return;
-			}
-			if (xmlMode) {
-				yield* Console.log(toXml(filtered));
-				return;
-			}
-			yield* Console.log(filtered.map((i) => formatIssue(i, key)).join("\n"));
-		}),
+	issuesListHandler,
 ).pipe(
 	Command.withDescription(
 		"List issues for a project ordered by sequence ID. Each line shows: REF  [state-group]  state-name  title",

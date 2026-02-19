@@ -66,12 +66,12 @@ afterEach(() => {
 
 describe("pagesList", () => {
 	it("lists pages with updated date and name", async () => {
-		const { pagesList } = await import("@/commands/pages");
+		const { pagesListHandler } = await import("@/commands/pages");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((pagesList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(pagesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -84,12 +84,12 @@ describe("pagesList", () => {
 	});
 
 	it("falls back to created_at when no updated_at", async () => {
-		const { pagesList } = await import("@/commands/pages");
+		const { pagesListHandler } = await import("@/commands/pages");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((pagesList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(pagesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -104,12 +104,12 @@ describe("pagesList", () => {
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
-		const { pagesList } = await import("@/commands/pages");
+		const { pagesListHandler } = await import("@/commands/pages");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((pagesList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(pagesListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -119,13 +119,13 @@ describe("pagesList", () => {
 
 describe("pagesGet", () => {
 	it("prints full JSON for a page", async () => {
-		const { pagesGet } = await import("@/commands/pages");
+		const { pagesGetHandler } = await import("@/commands/pages");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(pagesGet as any).handler({ project: "ACME", pageId: "pg1" }),
+				pagesGetHandler({ project: "ACME", pageId: "pg1" }),
 			);
 		} finally {
 			console.log = orig;

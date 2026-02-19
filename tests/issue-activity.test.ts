@@ -81,15 +81,13 @@ afterEach(() => {
 
 describe("issueActivity command handler", () => {
 	it("fetches and formats activity with field changes", async () => {
-		const { issueActivity } = await import("@/commands/issue");
+		const { issueActivityHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const originalLog = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueActivity as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueActivityHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = originalLog;
 		}
@@ -109,15 +107,13 @@ describe("issueActivity command handler", () => {
 			),
 		);
 
-		const { issueActivity } = await import("@/commands/issue");
+		const { issueActivityHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const originalLog = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueActivity as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueActivityHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = originalLog;
 		}
@@ -143,15 +139,13 @@ describe("issueActivity command handler", () => {
 			),
 		);
 
-		const { issueActivity } = await import("@/commands/issue");
+		const { issueActivityHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const originalLog = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueActivity as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueActivityHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = originalLog;
 		}
@@ -180,15 +174,13 @@ describe("issueActivity command handler", () => {
 			),
 		);
 
-		const { issueActivity } = await import("@/commands/issue");
+		const { issueActivityHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const originalLog = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueActivity as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueActivityHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = originalLog;
 		}

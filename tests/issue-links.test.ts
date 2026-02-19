@@ -7,7 +7,7 @@ import {
 	expect,
 	it,
 } from "bun:test";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
@@ -74,15 +74,13 @@ afterEach(() => {
 
 describe("issueLinkList", () => {
 	it("lists links for an issue", async () => {
-		const { issueLinkList } = await import("@/commands/issue");
+		const { issueLinkListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueLinkList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueLinkListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -94,15 +92,13 @@ describe("issueLinkList", () => {
 	});
 
 	it("shows '(no title)' for null title", async () => {
-		const { issueLinkList } = await import("@/commands/issue");
+		const { issueLinkListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueLinkList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueLinkListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -118,15 +114,13 @@ describe("issueLinkList", () => {
 			),
 		);
 
-		const { issueLinkList } = await import("@/commands/issue");
+		const { issueLinkListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise(
-				(issueLinkList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueLinkListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -141,7 +135,7 @@ describe("issueLinkAdd", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { url?: string };
 					return HttpResponse.json({
 						id: "lnk-new",
 						url: body.url,
@@ -151,17 +145,17 @@ describe("issueLinkAdd", () => {
 			),
 		);
 
-		const { issueLinkAdd } = await import("@/commands/issue");
+		const { issueLinkAddHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueLinkAdd as any).handler({
+				issueLinkAddHandler({
 					ref: "ACME-29",
 					url: "https://example.com",
-					title: { _tag: "None" },
+					title: Option.none(),
 				}),
 			);
 		} finally {
@@ -178,7 +172,10 @@ describe("issueLinkAdd", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as {
+						url?: string;
+						title?: string;
+					};
 					return HttpResponse.json({
 						id: "lnk-new2",
 						title: body.title,
@@ -189,17 +186,17 @@ describe("issueLinkAdd", () => {
 			),
 		);
 
-		const { issueLinkAdd } = await import("@/commands/issue");
+		const { issueLinkAddHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueLinkAdd as any).handler({
+				issueLinkAddHandler({
 					ref: "ACME-29",
 					url: "https://docs.example.com",
-					title: { _tag: "Some", value: "Design doc" },
+					title: Option.some("Design doc"),
 				}),
 			);
 		} finally {
@@ -223,14 +220,14 @@ describe("issueLinkRemove", () => {
 			),
 		);
 
-		const { issueLinkRemove } = await import("@/commands/issue");
+		const { issueLinkRemoveHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueLinkRemove as any).handler({ ref: "ACME-29", linkId: "lnk1" }),
+				issueLinkRemoveHandler({ ref: "ACME-29", linkId: "lnk1" }),
 			);
 		} finally {
 			console.log = orig;

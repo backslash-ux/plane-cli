@@ -15,25 +15,22 @@ function escapeXml(val: unknown): string {
 		.replace(/"/g, "&quot;");
 }
 
-function toXmlItem(obj: unknown, tag = "item"): string {
-	if (obj === null || typeof obj !== "object") {
-		return `<${tag}>${escapeXml(obj)}</${tag}>`;
-	}
-	const attrs = Object.entries(obj as Record<string, unknown>)
+function toXmlItem(obj: Record<string, unknown>, tag = "item"): string {
+	const attrs = Object.entries(obj)
 		.filter(([, v]) => v === null || typeof v !== "object")
 		.map(([k, v]) => `${k}="${escapeXml(v)}"`)
 		.join(" ");
-	const children = Object.entries(obj as Record<string, unknown>)
+	const children = Object.entries(obj)
 		.filter(([, v]) => v !== null && typeof v === "object")
 		.map(([k, v]) =>
 			Array.isArray(v)
-				? `<${k}>${v.map((i) => toXmlItem(i)).join("")}</${k}>`
-				: toXmlItem(v, k),
+				? `<${k}>${v.map((i) => toXmlItem(i as Record<string, unknown>)).join("")}</${k}>`
+				: toXmlItem(v as Record<string, unknown>, k),
 		)
 		.join("");
 	return `<${tag}${attrs ? " " + attrs : ""}>${children}</${tag}>`;
 }
 
 export function toXml(results: readonly unknown[]): string {
-	return `<results>\n${results.map((r) => "  " + toXmlItem(r)).join("\n")}\n</results>`;
+	return `<results>\n${results.map((r) => "  " + toXmlItem(r as Record<string, unknown>)).join("\n")}\n</results>`;
 }

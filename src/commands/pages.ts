@@ -11,32 +11,35 @@ const projectArg = Args.text({ name: "project" }).pipe(
 
 // --- pages list ---
 
+export function pagesListHandler({ project }: { project: string }) {
+	return Effect.gen(function* () {
+		const { id } = yield* resolveProject(project);
+		const raw = yield* api.get(`projects/${id}/pages/`);
+		const { results } = yield* decodeOrFail(PagesResponseSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify(results, null, 2));
+			return;
+		}
+		if (xmlMode) {
+			yield* Console.log(toXml(results));
+			return;
+		}
+		if (results.length === 0) {
+			yield* Console.log("No pages");
+			return;
+		}
+		const lines = results.map((p) => {
+			const updated = (p.updated_at ?? p.created_at).slice(0, 10);
+			return `${p.id}  ${updated}  ${p.name}`;
+		});
+		yield* Console.log(lines.join("\n"));
+	});
+}
+
 export const pagesList = Command.make(
 	"list",
 	{ project: projectArg },
-	({ project }) =>
-		Effect.gen(function* () {
-			const { id } = yield* resolveProject(project);
-			const raw = yield* api.get(`projects/${id}/pages/`);
-			const { results } = yield* decodeOrFail(PagesResponseSchema, raw);
-			if (jsonMode) {
-				yield* Console.log(JSON.stringify(results, null, 2));
-				return;
-			}
-			if (xmlMode) {
-				yield* Console.log(toXml(results));
-				return;
-			}
-			if (results.length === 0) {
-				yield* Console.log("No pages");
-				return;
-			}
-			const lines = results.map((p) => {
-				const updated = (p.updated_at ?? p.created_at).slice(0, 10);
-				return `${p.id}  ${updated}  ${p.name}`;
-			});
-			yield* Console.log(lines.join("\n"));
-		}),
+	pagesListHandler,
 ).pipe(
 	Command.withDescription(
 		"List pages for a project. Shows page UUID, last updated date, and title.\n\nExample:\n  plane pages list PROJ",
@@ -49,16 +52,25 @@ const pageIdArg = Args.text({ name: "page-id" }).pipe(
 	Args.withDescription("Page UUID (from 'plane pages list')"),
 );
 
+export function pagesGetHandler({
+	project,
+	pageId,
+}: {
+	project: string;
+	pageId: string;
+}) {
+	return Effect.gen(function* () {
+		const { id } = yield* resolveProject(project);
+		const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
+		const page = yield* decodeOrFail(PageSchema, raw);
+		yield* Console.log(JSON.stringify(page, null, 2));
+	});
+}
+
 export const pagesGet = Command.make(
 	"get",
 	{ project: projectArg, pageId: pageIdArg },
-	({ project, pageId }) =>
-		Effect.gen(function* () {
-			const { id } = yield* resolveProject(project);
-			const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
-			const page = yield* decodeOrFail(PageSchema, raw);
-			yield* Console.log(JSON.stringify(page, null, 2));
-		}),
+	pagesGetHandler,
 ).pipe(
 	Command.withDescription(
 		"Print full JSON for a page including description_html.\n\nExample:\n  plane pages get PROJ <page-id>",

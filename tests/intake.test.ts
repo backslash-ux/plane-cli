@@ -76,12 +76,12 @@ afterEach(() => {
 
 describe("intakeList", () => {
 	it("lists intake issues with status labels", async () => {
-		const { intakeList } = await import("@/commands/intake");
+		const { intakeListHandler } = await import("@/commands/intake");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((intakeList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(intakeListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -100,12 +100,12 @@ describe("intakeList", () => {
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
-		const { intakeList } = await import("@/commands/intake");
+		const { intakeListHandler } = await import("@/commands/intake");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((intakeList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(intakeListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -113,12 +113,12 @@ describe("intakeList", () => {
 	});
 
 	it("handles intake issue without issue_detail", async () => {
-		const { intakeList } = await import("@/commands/intake");
+		const { intakeListHandler } = await import("@/commands/intake");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise((intakeList as any).handler({ project: "ACME" }));
+			await Effect.runPromise(intakeListHandler({ project: "ACME" }));
 		} finally {
 			console.log = orig;
 		}
@@ -142,18 +142,18 @@ describe("intakeAccept", () => {
 				},
 			),
 		);
-		const { intakeAccept } = await import("@/commands/intake");
+		const { intakeAcceptHandler } = await import("@/commands/intake");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(intakeAccept as any).handler({ project: "ACME", intakeId: "int1" }),
+				intakeAcceptHandler({ project: "ACME", intakeId: "int1" }),
 			);
 		} finally {
 			console.log = orig;
 		}
-		expect((patchedBody as any).status).toBe(1);
+		expect((patchedBody as { status?: number }).status).toBe(1);
 		expect(logs.join("\n")).toContain("accepted");
 	});
 });
@@ -174,18 +174,18 @@ describe("intakeReject", () => {
 				},
 			),
 		);
-		const { intakeReject } = await import("@/commands/intake");
+		const { intakeRejectHandler } = await import("@/commands/intake");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(intakeReject as any).handler({ project: "ACME", intakeId: "int1" }),
+				intakeRejectHandler({ project: "ACME", intakeId: "int1" }),
 			);
 		} finally {
 			console.log = orig;
 		}
-		expect((patchedBody as any).status).toBe(-2);
+		expect((patchedBody as { status?: number }).status).toBe(-2);
 		expect(logs.join("\n")).toContain("rejected");
 	});
 });

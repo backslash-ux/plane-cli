@@ -43,8 +43,10 @@ describe("api.get", () => {
 				}),
 			),
 		);
-		const result = await Effect.runPromise(api.get("projects/"));
-		expect((result as any).results).toHaveLength(1);
+		const result = (await Effect.runPromise(api.get("projects/"))) as {
+			results: unknown[];
+		};
+		expect(result.results).toHaveLength(1);
 	});
 
 	it("strips trailing slash from PLANE_HOST", async () => {
@@ -54,8 +56,10 @@ describe("api.get", () => {
 				HttpResponse.json({ results: [] }),
 			),
 		);
-		const result = await Effect.runPromise(api.get("projects/"));
-		expect((result as any).results).toHaveLength(0);
+		const result = (await Effect.runPromise(api.get("projects/"))) as {
+			results: unknown[];
+		};
+		expect(result.results).toHaveLength(0);
 	});
 
 	it("appends expand=state for issues/ paths", async () => {
@@ -103,7 +107,7 @@ describe("api.post", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/p1/issues/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { name?: string };
 					return HttpResponse.json({
 						id: "new-issue",
 						sequence_id: 99,
@@ -116,7 +120,7 @@ describe("api.post", () => {
 		);
 		const result = (await Effect.runPromise(
 			api.post("projects/p1/issues/", { name: "New Issue" }),
-		)) as any;
+		)) as { sequence_id: number; name: string };
 		expect(result.sequence_id).toBe(99);
 		expect(result.name).toBe("New Issue");
 	});
@@ -128,7 +132,7 @@ describe("api.patch", () => {
 			http.patch(
 				`${BASE}/api/v1/workspaces/${WS}/projects/p1/issues/i1/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { priority?: string };
 					return HttpResponse.json({
 						id: "i1",
 						sequence_id: 1,
@@ -141,7 +145,7 @@ describe("api.patch", () => {
 		);
 		const result = (await Effect.runPromise(
 			api.patch("projects/p1/issues/i1/", { priority: "high" }),
-		)) as any;
+		)) as { priority: string };
 		expect(result.priority).toBe("high");
 	});
 });

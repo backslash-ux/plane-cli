@@ -7,7 +7,7 @@ import {
 	expect,
 	it,
 } from "bun:test";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
@@ -87,14 +87,12 @@ afterEach(() => {
 
 describe("issueCommentsList", () => {
 	it("lists comments with author and stripped HTML", async () => {
-		const { issueCommentsList } = await import("@/commands/issue");
+		const { issueCommentsListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise(
-				(issueCommentsList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueCommentsListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -112,14 +110,12 @@ describe("issueCommentsList", () => {
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
-		const { issueCommentsList } = await import("@/commands/issue");
+		const { issueCommentsListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise(
-				(issueCommentsList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueCommentsListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -142,14 +138,12 @@ describe("issueCommentsList", () => {
 					}),
 			),
 		);
-		const { issueCommentsList } = await import("@/commands/issue");
+		const { issueCommentsListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise(
-				(issueCommentsList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueCommentsListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -173,13 +167,13 @@ describe("issueCommentUpdate", () => {
 				},
 			),
 		);
-		const { issueCommentUpdate } = await import("@/commands/issue");
+		const { issueCommentUpdateHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(issueCommentUpdate as any).handler({
+				issueCommentUpdateHandler({
 					ref: "ACME-29",
 					commentId: "c1",
 					text: "Updated text",
@@ -188,7 +182,9 @@ describe("issueCommentUpdate", () => {
 		} finally {
 			console.log = orig;
 		}
-		expect((patchedBody as any).comment_html).toContain("Updated text");
+		expect((patchedBody as { comment_html?: string }).comment_html).toContain(
+			"Updated text",
+		);
 		expect(logs.join("\n")).toContain("c1");
 		expect(logs.join("\n")).toContain("updated");
 	});
@@ -206,13 +202,13 @@ describe("issueCommentDelete", () => {
 				},
 			),
 		);
-		const { issueCommentDelete } = await import("@/commands/issue");
+		const { issueCommentDeleteHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(issueCommentDelete as any).handler({
+				issueCommentDeleteHandler({
 					ref: "ACME-29",
 					commentId: "c1",
 				}),
@@ -227,14 +223,12 @@ describe("issueCommentDelete", () => {
 
 describe("issueWorklogsList", () => {
 	it("lists worklogs with hours", async () => {
-		const { issueWorklogsList } = await import("@/commands/issue");
+		const { issueWorklogsListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise(
-				(issueWorklogsList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueWorklogsListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -252,14 +246,12 @@ describe("issueWorklogsList", () => {
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
-		const { issueWorklogsList } = await import("@/commands/issue");
+		const { issueWorklogsListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise(
-				(issueWorklogsList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueWorklogsListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -273,7 +265,7 @@ describe("issueWorklogsAdd", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { duration?: number };
 					return HttpResponse.json({
 						id: "w-new",
 						duration: body.duration,
@@ -282,16 +274,16 @@ describe("issueWorklogsAdd", () => {
 				},
 			),
 		);
-		const { issueWorklogsAdd } = await import("@/commands/issue");
+		const { issueWorklogsAddHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(issueWorklogsAdd as any).handler({
+				issueWorklogsAddHandler({
 					ref: "ACME-29",
 					duration: 60,
-					description: { _tag: "None" },
+					description: Option.none(),
 				}),
 			);
 		} finally {
@@ -306,7 +298,10 @@ describe("issueWorklogsAdd", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as {
+						duration?: number;
+						description?: string;
+					};
 					return HttpResponse.json({
 						id: "w-new2",
 						duration: body.duration,
@@ -316,16 +311,16 @@ describe("issueWorklogsAdd", () => {
 				},
 			),
 		);
-		const { issueWorklogsAdd } = await import("@/commands/issue");
+		const { issueWorklogsAddHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
 			await Effect.runPromise(
-				(issueWorklogsAdd as any).handler({
+				issueWorklogsAddHandler({
 					ref: "ACME-29",
 					duration: 30,
-					description: { _tag: "Some", value: "standup" },
+					description: Option.some("standup"),
 				}),
 			);
 		} finally {
@@ -346,14 +341,12 @@ describe("issueWorklogsAdd", () => {
 					}),
 			),
 		);
-		const { issueWorklogsList } = await import("@/commands/issue");
+		const { issueWorklogsListHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 		try {
-			await Effect.runPromise(
-				(issueWorklogsList as any).handler({ ref: "ACME-29" }),
-			);
+			await Effect.runPromise(issueWorklogsListHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}

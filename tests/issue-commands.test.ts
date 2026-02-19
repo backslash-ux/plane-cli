@@ -9,7 +9,7 @@ import {
 } from "bun:test";
 import { Command } from "@effect/cli";
 import { NodeContext } from "@effect/platform-node";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Option } from "effect";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
@@ -90,13 +90,13 @@ afterEach(() => {
 
 describe("issueGet", () => {
 	it("prints full JSON for an issue", async () => {
-		const { issueGet } = await import("@/commands/issue");
+		const { issueGetHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise((issueGet as any).handler({ ref: "ACME-29" }));
+			await Effect.runPromise(issueGetHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -137,18 +137,18 @@ describe("issuesList", () => {
 			),
 		);
 
-		const { issuesList } = await import("@/commands/issues");
+		const { issuesListHandler } = await import("@/commands/issues");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issuesList as any).handler({
+				issuesListHandler({
 					project: "ACME",
-					state: { _tag: "Some", value: "completed" },
-					assignee: { _tag: "None" },
-					priority: { _tag: "None" },
+					state: Option.some("completed"),
+					assignee: Option.none(),
+					priority: Option.none(),
 				}),
 			);
 		} finally {
@@ -188,18 +188,18 @@ describe("issuesList", () => {
 			),
 		);
 
-		const { issuesList } = await import("@/commands/issues");
+		const { issuesListHandler } = await import("@/commands/issues");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issuesList as any).handler({
+				issuesListHandler({
 					project: "ACME",
-					state: { _tag: "None" },
-					assignee: { _tag: "Some", value: "alice@example.com" },
-					priority: { _tag: "None" },
+					state: Option.none(),
+					assignee: Option.some("alice@example.com"),
+					priority: Option.none(),
 				}),
 			);
 		} finally {
@@ -239,18 +239,18 @@ describe("issuesList", () => {
 			),
 		);
 
-		const { issuesList } = await import("@/commands/issues");
+		const { issuesListHandler } = await import("@/commands/issues");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issuesList as any).handler({
+				issuesListHandler({
 					project: "ACME",
-					state: { _tag: "None" },
-					assignee: { _tag: "None" },
-					priority: { _tag: "Some", value: "urgent" },
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.some("urgent"),
 				}),
 			);
 		} finally {
@@ -269,7 +269,7 @@ describe("issueUpdate", () => {
 			http.patch(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { state?: string };
 					return HttpResponse.json({
 						id: "i1",
 						sequence_id: 29,
@@ -281,22 +281,21 @@ describe("issueUpdate", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueUpdate as any).handler({
+				issueUpdateHandler({
 					ref: "ACME-29",
-					state: { _tag: "Some", value: "completed" },
-					priority: { _tag: "None" },
-					title: { _tag: "None" },
-					description: { _tag: "None" },
-					assignee: { _tag: "None" },
-					label: { _tag: "None" },
-
+					state: Option.some("completed"),
+					priority: Option.none(),
+					title: Option.none(),
+					description: Option.none(),
+					assignee: Option.none(),
+					label: Option.none(),
 					noAssignee: false,
 				}),
 			);
@@ -312,7 +311,7 @@ describe("issueUpdate", () => {
 			http.patch(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { priority?: string };
 					return HttpResponse.json({
 						id: "i1",
 						sequence_id: 29,
@@ -324,22 +323,21 @@ describe("issueUpdate", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueUpdate as any).handler({
+				issueUpdateHandler({
 					ref: "ACME-29",
-					state: { _tag: "None" },
-					priority: { _tag: "Some", value: "urgent" },
-					title: { _tag: "None" },
-					description: { _tag: "None" },
-					assignee: { _tag: "None" },
-					label: { _tag: "None" },
-
+					state: Option.none(),
+					priority: Option.some("urgent"),
+					title: Option.none(),
+					description: Option.none(),
+					assignee: Option.none(),
+					label: Option.none(),
 					noAssignee: false,
 				}),
 			);
@@ -351,18 +349,17 @@ describe("issueUpdate", () => {
 	});
 
 	it("fails when nothing to update", async () => {
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		const result = await Effect.runPromise(
 			Effect.either(
-				(issueUpdate as any).handler({
+				issueUpdateHandler({
 					ref: "ACME-29",
-					state: { _tag: "None" },
-					priority: { _tag: "None" },
-					title: { _tag: "None" },
-					description: { _tag: "None" },
-					assignee: { _tag: "None" },
-					label: { _tag: "None" },
-
+					state: Option.none(),
+					priority: Option.none(),
+					title: Option.none(),
+					description: Option.none(),
+					assignee: Option.none(),
+					label: Option.none(),
 					noAssignee: false,
 				}),
 			),
@@ -391,22 +388,21 @@ describe("issueUpdate", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "Some", value: "New title" },
-				description: { _tag: "None" },
-				assignee: { _tag: "None" },
-				label: { _tag: "None" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.some("New title"),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: Option.none(),
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).name).toBe("New title");
+		expect((patchedBody as { name?: string }).name).toBe("New title");
 	});
 });
 
@@ -423,14 +419,14 @@ describe("issueComment", () => {
 			),
 		);
 
-		const { issueComment } = await import("@/commands/issue");
+		const { issueCommentHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueComment as any).handler({
+				issueCommentHandler({
 					ref: "ACME-29",
 					text: "Fixed in latest build",
 				}),
@@ -439,7 +435,9 @@ describe("issueComment", () => {
 			console.log = orig;
 		}
 
-		expect((postedBody as any).comment_html).toContain("Fixed in latest build");
+		expect((postedBody as { comment_html?: string }).comment_html).toContain(
+			"Fixed in latest build",
+		);
 		expect(logs.join("\n")).toContain("Comment added to ACME-29");
 	});
 
@@ -455,10 +453,10 @@ describe("issueComment", () => {
 			),
 		);
 
-		const { issueComment } = await import("@/commands/issue");
+		const { issueCommentHandler } = await import("@/commands/issue");
 		try {
 			await Effect.runPromise(
-				(issueComment as any).handler({
+				issueCommentHandler({
 					ref: "ACME-29",
 					text: "<script>alert(1)</script>",
 				}),
@@ -466,8 +464,12 @@ describe("issueComment", () => {
 		} finally {
 		}
 
-		expect((postedBody as any).comment_html).toContain("&lt;script&gt;");
-		expect((postedBody as any).comment_html).not.toContain("<script>");
+		expect((postedBody as { comment_html?: string }).comment_html).toContain(
+			"&lt;script&gt;",
+		);
+		expect(
+			(postedBody as { comment_html?: string }).comment_html,
+		).not.toContain("<script>");
 	});
 });
 
@@ -477,7 +479,7 @@ describe("issueCreate", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as { name?: string };
 					return HttpResponse.json({
 						id: "new-i",
 						sequence_id: 99,
@@ -489,21 +491,21 @@ describe("issueCreate", () => {
 			),
 		);
 
-		const { issueCreate } = await import("@/commands/issue");
+		const { issueCreateHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueCreate as any).handler({
+				issueCreateHandler({
 					project: "ACME",
 					title: "New issue",
-					priority: { _tag: "None" },
-					state: { _tag: "None" },
-					description: { _tag: "None" },
-					assignee: { _tag: "None" },
-					label: { _tag: "None" },
+					priority: Option.none(),
+					state: Option.none(),
+					description: Option.none(),
+					assignee: Option.none(),
+					label: Option.none(),
 				}),
 			);
 		} finally {
@@ -519,7 +521,11 @@ describe("issueCreate", () => {
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
 				async ({ request }) => {
-					const body = (await request.json()) as any;
+					const body = (await request.json()) as {
+						name?: string;
+						priority?: string;
+						state?: string;
+					};
 					return HttpResponse.json({
 						id: "new-i2",
 						sequence_id: 100,
@@ -531,21 +537,21 @@ describe("issueCreate", () => {
 			),
 		);
 
-		const { issueCreate } = await import("@/commands/issue");
+		const { issueCreateHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
 			await Effect.runPromise(
-				(issueCreate as any).handler({
+				issueCreateHandler({
 					project: "ACME",
 					title: "High priority issue",
-					priority: { _tag: "Some", value: "high" },
-					state: { _tag: "Some", value: "completed" },
-					description: { _tag: "None" },
-					assignee: { _tag: "None" },
-					label: { _tag: "None" },
+					priority: Option.some("high"),
+					state: Option.some("completed"),
+					description: Option.none(),
+					assignee: Option.none(),
+					label: Option.none(),
 				}),
 			);
 		} finally {
@@ -567,7 +573,7 @@ describe("issueCreate description", () => {
 					return HttpResponse.json({
 						id: "new-i3",
 						sequence_id: 101,
-						name: (postedBody as any).name,
+						name: (postedBody as { name?: string }).name,
 						priority: "none",
 						state: "s1",
 					});
@@ -575,20 +581,20 @@ describe("issueCreate description", () => {
 			),
 		);
 
-		const { issueCreate } = await import("@/commands/issue");
+		const { issueCreateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueCreate as any).handler({
+			issueCreateHandler({
 				project: "ACME",
 				title: "Issue with description",
-				priority: { _tag: "None" },
-				state: { _tag: "None" },
-				description: { _tag: "Some", value: "Some context here" },
-				assignee: { _tag: "None" },
-				label: { _tag: "None" },
+				priority: Option.none(),
+				state: Option.none(),
+				description: Option.some("Some context here"),
+				assignee: Option.none(),
+				label: Option.none(),
 			}),
 		);
 
-		expect((postedBody as any).description_html).toBe(
+		expect((postedBody as { description_html?: string }).description_html).toBe(
 			"<p>Some context here</p>",
 		);
 	});
@@ -603,7 +609,7 @@ describe("issueCreate description", () => {
 					return HttpResponse.json({
 						id: "new-i4",
 						sequence_id: 102,
-						name: (postedBody as any).name,
+						name: (postedBody as { name?: string }).name,
 						priority: "none",
 						state: "s1",
 					});
@@ -611,21 +617,25 @@ describe("issueCreate description", () => {
 			),
 		);
 
-		const { issueCreate } = await import("@/commands/issue");
+		const { issueCreateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueCreate as any).handler({
+			issueCreateHandler({
 				project: "ACME",
 				title: "XSS test",
-				priority: { _tag: "None" },
-				state: { _tag: "None" },
-				description: { _tag: "Some", value: "<script>alert(1)</script>" },
-				assignee: { _tag: "None" },
-				label: { _tag: "None" },
+				priority: Option.none(),
+				state: Option.none(),
+				description: Option.some("<script>alert(1)</script>"),
+				assignee: Option.none(),
+				label: Option.none(),
 			}),
 		);
 
-		expect((postedBody as any).description_html).toContain("&lt;script&gt;");
-		expect((postedBody as any).description_html).not.toContain("<script>");
+		expect(
+			(postedBody as { description_html?: string }).description_html,
+		).toContain("&lt;script&gt;");
+		expect(
+			(postedBody as { description_html?: string }).description_html,
+		).not.toContain("<script>");
 	});
 });
 
@@ -648,24 +658,23 @@ describe("issueUpdate description", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "None" },
-				description: { _tag: "Some", value: "Updated description" },
-				assignee: { _tag: "None" },
-				label: { _tag: "None" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.some("Updated description"),
+				assignee: Option.none(),
+				label: Option.none(),
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).description_html).toBe(
-			"<p>Updated description</p>",
-		);
+		expect(
+			(patchedBody as { description_html?: string }).description_html,
+		).toBe("<p>Updated description</p>");
 	});
 
 	it("HTML-escapes angle brackets in update description", async () => {
@@ -686,23 +695,26 @@ describe("issueUpdate description", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "None" },
-				description: { _tag: "Some", value: "<b>bold</b>" },
-				assignee: { _tag: "None" },
-				label: { _tag: "None" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.some("<b>bold</b>"),
+				assignee: Option.none(),
+				label: Option.none(),
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).description_html).toContain("&lt;b&gt;");
-		expect((patchedBody as any).description_html).not.toContain("<b>");
+		expect(
+			(patchedBody as { description_html?: string }).description_html,
+		).toContain("&lt;b&gt;");
+		expect(
+			(patchedBody as { description_html?: string }).description_html,
+		).not.toContain("<b>");
 	});
 });
 
@@ -725,22 +737,23 @@ describe("issueUpdate assignee", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "None" },
-				description: { _tag: "None" },
-				assignee: { _tag: "Some", value: "Alice" },
-				label: { _tag: "None" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.some("Alice"),
+				label: Option.none(),
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).assignees).toEqual(["m-alice"]);
+		expect((patchedBody as { assignees?: string[] }).assignees).toEqual([
+			"m-alice",
+		]);
 	});
 
 	it("clears assignees with --no-assignee", async () => {
@@ -761,22 +774,21 @@ describe("issueUpdate assignee", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "None" },
-				description: { _tag: "None" },
-				assignee: { _tag: "None" },
-				label: { _tag: "None" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: Option.none(),
 				noAssignee: true,
 			}),
 		);
 
-		expect((patchedBody as any).assignees).toEqual([]);
+		expect((patchedBody as { assignees?: string[] }).assignees).toEqual([]);
 	});
 
 	it("resolves assignee by email", async () => {
@@ -797,22 +809,23 @@ describe("issueUpdate assignee", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "None" },
-				description: { _tag: "None" },
-				assignee: { _tag: "Some", value: "bob@example.com" },
-				label: { _tag: "None" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.some("bob@example.com"),
+				label: Option.none(),
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).assignees).toEqual(["m-bob"]);
+		expect((patchedBody as { assignees?: string[] }).assignees).toEqual([
+			"m-bob",
+		]);
 	});
 });
 
@@ -827,7 +840,7 @@ describe("issueCreate assignee", () => {
 					return HttpResponse.json({
 						id: "new-assignee",
 						sequence_id: 300,
-						name: (postedBody as any).name,
+						name: (postedBody as { name?: string }).name,
 						priority: "none",
 						state: "s1",
 					});
@@ -835,20 +848,22 @@ describe("issueCreate assignee", () => {
 			),
 		);
 
-		const { issueCreate } = await import("@/commands/issue");
+		const { issueCreateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueCreate as any).handler({
+			issueCreateHandler({
 				project: "ACME",
 				title: "Assigned issue",
-				priority: { _tag: "None" },
-				state: { _tag: "None" },
-				description: { _tag: "None" },
-				assignee: { _tag: "Some", value: "Alice" },
-				label: { _tag: "None" },
+				priority: Option.none(),
+				state: Option.none(),
+				description: Option.none(),
+				assignee: Option.some("Alice"),
+				label: Option.none(),
 			}),
 		);
 
-		expect((postedBody as any).assignees).toEqual(["m-alice"]);
+		expect((postedBody as { assignees?: string[] }).assignees).toEqual([
+			"m-alice",
+		]);
 	});
 });
 
@@ -871,22 +886,23 @@ describe("issueUpdate label", () => {
 			),
 		);
 
-		const { issueUpdate } = await import("@/commands/issue");
+		const { issueUpdateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueUpdate as any).handler({
+			issueUpdateHandler({
 				ref: "ACME-29",
-				state: { _tag: "None" },
-				priority: { _tag: "None" },
-				title: { _tag: "None" },
-				description: { _tag: "None" },
-				assignee: { _tag: "None" },
-				label: { _tag: "Some", value: "bug" },
-
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: Option.some("bug"),
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).label_ids).toEqual(["l-bug"]);
+		expect((patchedBody as { label_ids?: string[] }).label_ids).toEqual([
+			"l-bug",
+		]);
 	});
 });
 
@@ -901,7 +917,7 @@ describe("issueCreate label", () => {
 					return HttpResponse.json({
 						id: "new-label",
 						sequence_id: 301,
-						name: (postedBody as any).name,
+						name: (postedBody as { name?: string }).name,
 						priority: "none",
 						state: "s1",
 					});
@@ -909,20 +925,22 @@ describe("issueCreate label", () => {
 			),
 		);
 
-		const { issueCreate } = await import("@/commands/issue");
+		const { issueCreateHandler } = await import("@/commands/issue");
 		await Effect.runPromise(
-			(issueCreate as any).handler({
+			issueCreateHandler({
 				project: "ACME",
 				title: "Labeled issue",
-				priority: { _tag: "None" },
-				state: { _tag: "None" },
-				description: { _tag: "None" },
-				assignee: { _tag: "None" },
-				label: { _tag: "Some", value: "Bug" },
+				priority: Option.none(),
+				state: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: Option.some("Bug"),
 			}),
 		);
 
-		expect((postedBody as any).label_ids).toEqual(["l-bug"]);
+		expect((postedBody as { label_ids?: string[] }).label_ids).toEqual([
+			"l-bug",
+		]);
 	});
 });
 
@@ -939,13 +957,13 @@ describe("issueDelete", () => {
 			),
 		);
 
-		const { issueDelete } = await import("@/commands/issue");
+		const { issueDeleteHandler } = await import("@/commands/issue");
 		const logs: string[] = [];
 		const orig = console.log;
 		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
 		try {
-			await Effect.runPromise((issueDelete as any).handler({ ref: "ACME-29" }));
+			await Effect.runPromise(issueDeleteHandler({ ref: "ACME-29" }));
 		} finally {
 			console.log = orig;
 		}
@@ -994,7 +1012,7 @@ describe("--description argv parsing", () => {
 					return HttpResponse.json({
 						id: "argv-i1",
 						sequence_id: 200,
-						name: (postedBody as any).name,
+						name: (postedBody as { name?: string }).name,
 						priority: "none",
 						state: "s1",
 					});
@@ -1011,7 +1029,9 @@ describe("--description argv parsing", () => {
 			"Argv test issue",
 		]);
 		expect(logs.join("\n")).toContain("Created");
-		expect((postedBody as any).description_html).toBe("<p>Hello world</p>");
+		expect((postedBody as { description_html?: string }).description_html).toBe(
+			"<p>Hello world</p>",
+		);
 	});
 
 	it("issue create HTML-escapes & in description via argv", async () => {
@@ -1024,7 +1044,7 @@ describe("--description argv parsing", () => {
 					return HttpResponse.json({
 						id: "argv-i2",
 						sequence_id: 201,
-						name: (postedBody as any).name,
+						name: (postedBody as { name?: string }).name,
 						priority: "none",
 						state: "s1",
 					});
@@ -1040,7 +1060,9 @@ describe("--description argv parsing", () => {
 			"ACME",
 			"Ampersand test",
 		]);
-		expect((postedBody as any).description_html).toBe("<p>a &amp; b</p>");
+		expect((postedBody as { description_html?: string }).description_html).toBe(
+			"<p>a &amp; b</p>",
+		);
 	});
 
 	it("issue update passes --description to API via argv", async () => {
@@ -1062,6 +1084,8 @@ describe("--description argv parsing", () => {
 		);
 
 		await runCli(["issue", "update", "--description", "New desc", "ACME-29"]);
-		expect((patchedBody as any).description_html).toBe("<p>New desc</p>");
+		expect(
+			(patchedBody as { description_html?: string }).description_html,
+		).toBe("<p>New desc</p>");
 	});
 });
