@@ -16,6 +16,7 @@ export const IssueSchema = Schema.Struct({
 	name: Schema.String,
 	priority: Schema.String,
 	state: Schema.Union(Schema.String, StateSchema),
+	assignees: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 	description_html: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type Issue = typeof IssueSchema.Type;

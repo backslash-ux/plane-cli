@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
 import {
 	IssuesResponseSchema,
+	LabelsResponseSchema,
 	MembersResponseSchema,
 	ProjectsResponseSchema,
 	StatesResponseSchema,
@@ -107,5 +108,17 @@ export function getStateId(projectId: string, nameOrGroup: string) {
 		if (!state)
 			return yield* Effect.fail(new Error(`State not found: ${nameOrGroup}`));
 		return state.id;
+	});
+}
+
+export function getLabelId(projectId: string, name: string) {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/labels/`);
+		const { results } = yield* decodeOrFail(LabelsResponseSchema, raw);
+		const lower = name.toLowerCase();
+		const label = results.find((l) => l.name.toLowerCase() === lower);
+		if (!label)
+			return yield* Effect.fail(new Error(`Label not found: ${name}`));
+		return label.id;
 	});
 }

@@ -12,6 +12,7 @@ import {
 } from "../config.js";
 import {
 	findIssueBySeq,
+	getLabelId,
 	getMemberId,
 	getStateId,
 	parseIssueRef,
@@ -56,6 +57,10 @@ const assigneeOption = Options.optional(Options.text("assignee")).pipe(
 	Options.withDescription("Assign to a member (display name, email, or UUID)"),
 );
 
+const labelOption = Options.optional(Options.text("label")).pipe(
+	Options.withDescription("Set issue label by name"),
+);
+
 const noAssigneeOption = Options.boolean("no-assignee").pipe(
 	Options.withDescription("Clear all assignees"),
 	Options.withDefault(false),
@@ -68,10 +73,11 @@ export const issueUpdate = Command.make(
 		priority: priorityOption,
 		description: descriptionOption,
 		assignee: assigneeOption,
+		label: labelOption,
 		noAssignee: noAssigneeOption,
 		ref: refArg,
 	},
-	({ ref, state, priority, description, assignee, noAssignee }) =>
+	({ ref, state, priority, description, assignee, label, noAssignee }) =>
 		Effect.gen(function* () {
 			const { projectId, seq } = yield* parseIssueRef(ref);
 			const issue = yield* findIssueBySeq(projectId, seq);
@@ -94,11 +100,15 @@ export const issueUpdate = Command.make(
 				const memberId = yield* getMemberId(assignee.value);
 				body["assignees"] = [memberId];
 			}
+			if (label._tag === "Some") {
+				const labelId = yield* getLabelId(projectId, label.value);
+				body["label_ids"] = [labelId];
+			}
 
 			if (Object.keys(body).length === 0) {
 				yield* Effect.fail(
 					new Error(
-						"Nothing to update. Specify --state, --priority, --description, --assignee, or --no-assignee",
+						"Nothing to update. Specify --state, --priority, --description, --assignee, --label, or --no-assignee",
 					),
 				);
 			}
@@ -170,6 +180,10 @@ const createAssigneeOption = Options.optional(Options.text("assignee")).pipe(
 	Options.withDescription("Assign to a member (display name, email, or UUID)"),
 );
 
+const createLabelOption = Options.optional(Options.text("label")).pipe(
+	Options.withDescription("Set issue label by name"),
+);
+
 export const issueCreate = Command.make(
 	"create",
 	{
@@ -177,10 +191,11 @@ export const issueCreate = Command.make(
 		state: createStateOption,
 		description: createDescriptionOption,
 		assignee: createAssigneeOption,
+		label: createLabelOption,
 		project: projectRefArg,
 		title: titleArg,
 	},
-	({ project, title, priority, state, description, assignee }) =>
+	({ project, title, priority, state, description, assignee, label }) =>
 		Effect.gen(function* () {
 			const { key, id: projectId } = yield* resolveProject(project);
 			const body: Record<string, unknown> = { name: title };
@@ -194,6 +209,10 @@ export const issueCreate = Command.make(
 			if (assignee._tag === "Some") {
 				const memberId = yield* getMemberId(assignee.value);
 				body["assignees"] = [memberId];
+			}
+			if (label._tag === "Some") {
+				const labelId = yield* getLabelId(projectId, label.value);
+				body["label_ids"] = [labelId];
 			}
 			const raw = yield* api.post(`projects/${projectId}/issues/`, body);
 			const created = yield* decodeOrFail(IssueSchema, raw);
