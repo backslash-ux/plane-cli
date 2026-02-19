@@ -58,6 +58,17 @@ describe("toXml", () => {
 		expect(out).toContain("</tags>");
 	});
 
+	it("renders primitive array items as <item> text nodes", () => {
+		const out = toXml([{ id: "1", assignees: ["uuid-1", "uuid-2"] }]);
+		expect(out).toContain("<item>uuid-1</item>");
+		expect(out).toContain("<item>uuid-2</item>");
+	});
+
+	it("escapes special chars in primitive array items", () => {
+		const out = toXml([{ id: "1", labels: ["a & b"] }]);
+		expect(out).toContain("<item>a &amp; b</item>");
+	});
+
 	it("handles null values as empty string in attributes", () => {
 		const out = toXml([{ id: "1", color: null }]);
 		expect(out).toContain('color=""');

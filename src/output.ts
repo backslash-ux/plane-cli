@@ -24,7 +24,13 @@ function toXmlItem(obj: Record<string, unknown>, tag = "item"): string {
 		.filter(([, v]) => v !== null && typeof v === "object")
 		.map(([k, v]) =>
 			Array.isArray(v)
-				? `<${k}>${v.map((i) => toXmlItem(i as Record<string, unknown>)).join("")}</${k}>`
+				? `<${k}>${v
+						.map((i) =>
+							typeof i === "object" && i !== null
+								? toXmlItem(i as Record<string, unknown>)
+								: `<item>${escapeXml(i)}</item>`,
+						)
+						.join("")}</${k}>`
 				: toXmlItem(v as Record<string, unknown>, k),
 		)
 		.join("");
