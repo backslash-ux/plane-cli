@@ -1,157 +1,191 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
-import { Effect } from "effect"
-import { http, HttpResponse } from "msw"
-import { setupServer } from "msw/node"
-import { _clearProjectCache } from "@/resolve"
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+} from "bun:test";
+import { Effect } from "effect";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import { _clearProjectCache } from "@/resolve";
 
-const BASE = "http://intake-test.local"
-const WS = "testws"
+const BASE = "http://intake-test.local";
+const WS = "testws";
 
-const PROJECTS = [{ id: "proj-acme", identifier: "ACME", name: "Acme Project" }]
+const PROJECTS = [
+	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
+];
 const INTAKE_ISSUES = [
-  {
-    id: "int1",
-    issue_detail: { id: "i1", sequence_id: 5, name: "Bug report", priority: "high" },
-    status: 0,
-    created_at: "2025-01-15T10:00:00Z",
-  },
-  {
-    id: "int2",
-    issue_detail: { id: "i2", sequence_id: 6, name: "Feature request", priority: "low" },
-    status: 1,
-    created_at: "2025-01-14T10:00:00Z",
-  },
-  {
-    id: "int3",
-    created_at: "2025-01-13T10:00:00Z",
-  },
-]
+	{
+		id: "int1",
+		issue_detail: {
+			id: "i1",
+			sequence_id: 5,
+			name: "Bug report",
+			priority: "high",
+		},
+		status: 0,
+		created_at: "2025-01-15T10:00:00Z",
+	},
+	{
+		id: "int2",
+		issue_detail: {
+			id: "i2",
+			sequence_id: 6,
+			name: "Feature request",
+			priority: "low",
+		},
+		status: 1,
+		created_at: "2025-01-14T10:00:00Z",
+	},
+	{
+		id: "int3",
+		created_at: "2025-01-13T10:00:00Z",
+	},
+];
 
 const server = setupServer(
-  http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
-    HttpResponse.json({ results: PROJECTS }),
-  ),
-  http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/`, () =>
-    HttpResponse.json({ results: INTAKE_ISSUES }),
-  ),
-)
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
+		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/`,
+		() => HttpResponse.json({ results: INTAKE_ISSUES }),
+	),
+);
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
-afterAll(() => server.close())
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterAll(() => server.close());
 
 beforeEach(() => {
-  _clearProjectCache()
-  process.env["PLANE_HOST"] = BASE
-  process.env["PLANE_WORKSPACE"] = WS
-  process.env["PLANE_API_TOKEN"] = "test-token"
-})
+	_clearProjectCache();
+	process.env["PLANE_HOST"] = BASE;
+	process.env["PLANE_WORKSPACE"] = WS;
+	process.env["PLANE_API_TOKEN"] = "test-token";
+});
 
 afterEach(() => {
-  server.resetHandlers()
-  delete process.env["PLANE_HOST"]
-  delete process.env["PLANE_WORKSPACE"]
-  delete process.env["PLANE_API_TOKEN"]
-})
+	server.resetHandlers();
+	delete process.env["PLANE_HOST"];
+	delete process.env["PLANE_WORKSPACE"];
+	delete process.env["PLANE_API_TOKEN"];
+});
 
 describe("intakeList", () => {
-  it("lists intake issues with status labels", async () => {
-    const { intakeList } = await import("@/commands/intake")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
-    try {
-      await Effect.runPromise((intakeList as any).handler({ project: "ACME" }))
-    } finally {
-      console.log = orig
-    }
-    const output = logs.join("\n")
-    expect(output).toContain("int1")
-    expect(output).toContain("pending")
-    expect(output).toContain("Bug report")
-    expect(output).toContain("int2")
-    expect(output).toContain("accepted")
-  })
+	it("lists intake issues with status labels", async () => {
+		const { intakeList } = await import("@/commands/intake");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise((intakeList as any).handler({ project: "ACME" }));
+		} finally {
+			console.log = orig;
+		}
+		const output = logs.join("\n");
+		expect(output).toContain("int1");
+		expect(output).toContain("pending");
+		expect(output).toContain("Bug report");
+		expect(output).toContain("int2");
+		expect(output).toContain("accepted");
+	});
 
-  it("shows 'No intake issues' when empty", async () => {
-    server.use(
-      http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/`, () =>
-        HttpResponse.json({ results: [] }),
-      ),
-    )
-    const { intakeList } = await import("@/commands/intake")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
-    try {
-      await Effect.runPromise((intakeList as any).handler({ project: "ACME" }))
-    } finally {
-      console.log = orig
-    }
-    expect(logs.join("\n")).toBe("No intake issues")
-  })
+	it("shows 'No intake issues' when empty", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/`,
+				() => HttpResponse.json({ results: [] }),
+			),
+		);
+		const { intakeList } = await import("@/commands/intake");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise((intakeList as any).handler({ project: "ACME" }));
+		} finally {
+			console.log = orig;
+		}
+		expect(logs.join("\n")).toBe("No intake issues");
+	});
 
-  it("handles intake issue without issue_detail", async () => {
-    const { intakeList } = await import("@/commands/intake")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
-    try {
-      await Effect.runPromise((intakeList as any).handler({ project: "ACME" }))
-    } finally {
-      console.log = orig
-    }
-    expect(logs.join("\n")).toContain("int3")
-  })
-})
+	it("handles intake issue without issue_detail", async () => {
+		const { intakeList } = await import("@/commands/intake");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise((intakeList as any).handler({ project: "ACME" }));
+		} finally {
+			console.log = orig;
+		}
+		expect(logs.join("\n")).toContain("int3");
+	});
+});
 
 describe("intakeAccept", () => {
-  it("accepts an intake issue", async () => {
-    let patchedBody: unknown
-    server.use(
-      http.patch(
-        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
-        async ({ request }) => {
-          patchedBody = await request.json()
-          return HttpResponse.json({ id: "int1", status: 1, created_at: "2025-01-15T10:00:00Z" })
-        },
-      ),
-    )
-    const { intakeAccept } = await import("@/commands/intake")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
-    try {
-      await Effect.runPromise((intakeAccept as any).handler({ project: "ACME", intakeId: "int1" }))
-    } finally {
-      console.log = orig
-    }
-    expect((patchedBody as any).status).toBe(1)
-    expect(logs.join("\n")).toContain("accepted")
-  })
-})
+	it("accepts an intake issue", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "int1",
+						status: 1,
+						created_at: "2025-01-15T10:00:00Z",
+					});
+				},
+			),
+		);
+		const { intakeAccept } = await import("@/commands/intake");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				(intakeAccept as any).handler({ project: "ACME", intakeId: "int1" }),
+			);
+		} finally {
+			console.log = orig;
+		}
+		expect((patchedBody as any).status).toBe(1);
+		expect(logs.join("\n")).toContain("accepted");
+	});
+});
 
 describe("intakeReject", () => {
-  it("rejects an intake issue", async () => {
-    let patchedBody: unknown
-    server.use(
-      http.patch(
-        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
-        async ({ request }) => {
-          patchedBody = await request.json()
-          return HttpResponse.json({ id: "int1", status: -2, created_at: "2025-01-15T10:00:00Z" })
-        },
-      ),
-    )
-    const { intakeReject } = await import("@/commands/intake")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
-    try {
-      await Effect.runPromise((intakeReject as any).handler({ project: "ACME", intakeId: "int1" }))
-    } finally {
-      console.log = orig
-    }
-    expect((patchedBody as any).status).toBe(-2)
-    expect(logs.join("\n")).toContain("rejected")
-  })
-})
+	it("rejects an intake issue", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "int1",
+						status: -2,
+						created_at: "2025-01-15T10:00:00Z",
+					});
+				},
+			),
+		);
+		const { intakeReject } = await import("@/commands/intake");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				(intakeReject as any).handler({ project: "ACME", intakeId: "int1" }),
+			);
+		} finally {
+			console.log = orig;
+		}
+		expect((patchedBody as any).status).toBe(-2);
+		expect(logs.join("\n")).toContain("rejected");
+	});
+});

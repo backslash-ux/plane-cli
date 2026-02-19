@@ -1,255 +1,299 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
-import { Effect } from "effect"
-import { http, HttpResponse } from "msw"
-import { setupServer } from "msw/node"
-import { _clearProjectCache } from "@/resolve"
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+} from "bun:test";
+import { Effect } from "effect";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import { _clearProjectCache } from "@/resolve";
 
-const BASE = "http://modules-test.local"
-const WS = "testws"
+const BASE = "http://modules-test.local";
+const WS = "testws";
 
-const PROJECTS = [{ id: "proj-acme", identifier: "ACME", name: "Acme Project" }]
-const ISSUES = [{ id: "i1", sequence_id: 29, name: "Migrate Button", priority: "high", state: "s1" }]
+const PROJECTS = [
+	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
+];
+const ISSUES = [
+	{
+		id: "i1",
+		sequence_id: 29,
+		name: "Migrate Button",
+		priority: "high",
+		state: "s1",
+	},
+];
 const MODULES = [
-  { id: "mod1", name: "Sprint 1", status: "in_progress" },
-  { id: "mod2", name: "Sprint 2", status: "backlog" },
-]
+	{ id: "mod1", name: "Sprint 1", status: "in_progress" },
+	{ id: "mod2", name: "Sprint 2", status: "backlog" },
+];
 const MODULE_ISSUES = [
-  {
-    id: "mi1",
-    issue: "i1",
-    issue_detail: { id: "i1", sequence_id: 29, name: "Migrate Button" },
-  },
-]
+	{
+		id: "mi1",
+		issue: "i1",
+		issue_detail: { id: "i1", sequence_id: 29, name: "Migrate Button" },
+	},
+];
 
 const server = setupServer(
-  http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
-    HttpResponse.json({ results: PROJECTS }),
-  ),
-  http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
-    HttpResponse.json({ results: ISSUES }),
-  ),
-  http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`, () =>
-    HttpResponse.json({ results: MODULES }),
-  ),
-  http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`, () =>
-    HttpResponse.json({ results: MODULE_ISSUES }),
-  ),
-)
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
+		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
+		HttpResponse.json({ results: ISSUES }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`, () =>
+		HttpResponse.json({ results: MODULES }),
+	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
+		() => HttpResponse.json({ results: MODULE_ISSUES }),
+	),
+);
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
-afterAll(() => server.close())
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterAll(() => server.close());
 
 beforeEach(() => {
-  _clearProjectCache()
-  process.env["PLANE_HOST"] = BASE
-  process.env["PLANE_WORKSPACE"] = WS
-  process.env["PLANE_API_TOKEN"] = "test-token"
-})
+	_clearProjectCache();
+	process.env["PLANE_HOST"] = BASE;
+	process.env["PLANE_WORKSPACE"] = WS;
+	process.env["PLANE_API_TOKEN"] = "test-token";
+});
 
 afterEach(() => {
-  server.resetHandlers()
-  delete process.env["PLANE_HOST"]
-  delete process.env["PLANE_WORKSPACE"]
-  delete process.env["PLANE_API_TOKEN"]
-})
+	server.resetHandlers();
+	delete process.env["PLANE_HOST"];
+	delete process.env["PLANE_WORKSPACE"];
+	delete process.env["PLANE_API_TOKEN"];
+});
 
 describe("modulesList", () => {
-  it("lists modules for a project", async () => {
-    const { modulesList } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+	it("lists modules for a project", async () => {
+		const { modulesList } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise((modulesList as any).handler({ project: "ACME" }))
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(modulesList as any).handler({ project: "ACME" }),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    const output = logs.join("\n")
-    expect(output).toContain("mod1")
-    expect(output).toContain("Sprint 1")
-    expect(output).toContain("in_progress")
-    expect(output).toContain("mod2")
-    expect(output).toContain("Sprint 2")
-  })
+		const output = logs.join("\n");
+		expect(output).toContain("mod1");
+		expect(output).toContain("Sprint 1");
+		expect(output).toContain("in_progress");
+		expect(output).toContain("mod2");
+		expect(output).toContain("Sprint 2");
+	});
 
-  it("shows 'No modules found' when empty", async () => {
-    server.use(
-      http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`, () =>
-        HttpResponse.json({ results: [] }),
-      ),
-    )
+	it("shows 'No modules found' when empty", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				() => HttpResponse.json({ results: [] }),
+			),
+		);
 
-    const { modulesList } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+		const { modulesList } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise((modulesList as any).handler({ project: "ACME" }))
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(modulesList as any).handler({ project: "ACME" }),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    expect(logs.join("\n")).toBe("No modules found")
-  })
+		expect(logs.join("\n")).toBe("No modules found");
+	});
 
-  it("shows '?' for missing status", async () => {
-    server.use(
-      http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`, () =>
-        HttpResponse.json({ results: [{ id: "mod3", name: "Unstarted Sprint" }] }),
-      ),
-    )
+	it("shows '?' for missing status", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "mod3", name: "Unstarted Sprint" }],
+					}),
+			),
+		);
 
-    const { modulesList } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+		const { modulesList } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise((modulesList as any).handler({ project: "ACME" }))
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(modulesList as any).handler({ project: "ACME" }),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    expect(logs.join("\n")).toContain("?")
-  })
-})
+		expect(logs.join("\n")).toContain("?");
+	});
+});
 
 describe("moduleIssuesList", () => {
-  it("lists issues in a module with detail", async () => {
-    const { moduleIssuesList } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+	it("lists issues in a module with detail", async () => {
+		const { moduleIssuesList } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise(
-        (moduleIssuesList as any).handler({ project: "ACME", moduleId: "mod1" }),
-      )
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(moduleIssuesList as any).handler({
+					project: "ACME",
+					moduleId: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    const output = logs.join("\n")
-    expect(output).toContain("ACME-")
-    expect(output).toContain("29")
-    expect(output).toContain("Migrate Button")
-  })
+		const output = logs.join("\n");
+		expect(output).toContain("ACME-");
+		expect(output).toContain("29");
+		expect(output).toContain("Migrate Button");
+	});
 
-  it("falls back to issue UUID when no issue_detail", async () => {
-    server.use(
-      http.get(
-        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
-        () => HttpResponse.json({ results: [{ id: "mi2", issue: "bare-uuid" }] }),
-      ),
-    )
+	it("falls back to issue UUID when no issue_detail", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
+				() =>
+					HttpResponse.json({ results: [{ id: "mi2", issue: "bare-uuid" }] }),
+			),
+		);
 
-    const { moduleIssuesList } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+		const { moduleIssuesList } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise(
-        (moduleIssuesList as any).handler({ project: "ACME", moduleId: "mod1" }),
-      )
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(moduleIssuesList as any).handler({
+					project: "ACME",
+					moduleId: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    expect(logs.join("\n")).toContain("bare-uuid")
-  })
+		expect(logs.join("\n")).toContain("bare-uuid");
+	});
 
-  it("shows 'No issues in module' when empty", async () => {
-    server.use(
-      http.get(
-        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
-        () => HttpResponse.json({ results: [] }),
-      ),
-    )
+	it("shows 'No issues in module' when empty", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
+				() => HttpResponse.json({ results: [] }),
+			),
+		);
 
-    const { moduleIssuesList } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+		const { moduleIssuesList } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise(
-        (moduleIssuesList as any).handler({ project: "ACME", moduleId: "mod1" }),
-      )
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(moduleIssuesList as any).handler({
+					project: "ACME",
+					moduleId: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    expect(logs.join("\n")).toBe("No issues in module")
-  })
-})
+		expect(logs.join("\n")).toBe("No issues in module");
+	});
+});
 
 describe("moduleIssuesAdd", () => {
-  it("adds an issue to a module", async () => {
-    let postedBody: unknown
-    server.use(
-      http.post(
-        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
-        async ({ request }) => {
-          postedBody = await request.json()
-          return HttpResponse.json({ issues: ["i1"] }, { status: 201 })
-        },
-      ),
-    )
+	it("adds an issue to a module", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json({ issues: ["i1"] }, { status: 201 });
+				},
+			),
+		);
 
-    const { moduleIssuesAdd } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+		const { moduleIssuesAdd } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise(
-        (moduleIssuesAdd as any).handler({ project: "ACME", moduleId: "mod1", ref: "ACME-29" }),
-      )
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(moduleIssuesAdd as any).handler({
+					project: "ACME",
+					moduleId: "mod1",
+					ref: "ACME-29",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    expect((postedBody as any).issues).toContain("i1")
-    expect(logs.join("\n")).toContain("ACME-29")
-    expect(logs.join("\n")).toContain("mod1")
-  })
-})
+		expect((postedBody as any).issues).toContain("i1");
+		expect(logs.join("\n")).toContain("ACME-29");
+		expect(logs.join("\n")).toContain("mod1");
+	});
+});
 
 describe("moduleIssuesRemove", () => {
-  it("removes a module-issue", async () => {
-    let deleted = false
-    server.use(
-      http.delete(
-        `${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/mi1/`,
-        () => {
-          deleted = true
-          return new HttpResponse(null, { status: 204 })
-        },
-      ),
-    )
+	it("removes a module-issue", async () => {
+		let deleted = false;
+		server.use(
+			http.delete(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/mi1/`,
+				() => {
+					deleted = true;
+					return new HttpResponse(null, { status: 204 });
+				},
+			),
+		);
 
-    const { moduleIssuesRemove } = await import("@/commands/modules")
-    const logs: string[] = []
-    const orig = console.log
-    console.log = (...args: unknown[]) => logs.push(args.join(" "))
+		const { moduleIssuesRemove } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
 
-    try {
-      await Effect.runPromise(
-        (moduleIssuesRemove as any).handler({
-          project: "ACME",
-          moduleId: "mod1",
-          moduleIssueId: "mi1",
-        }),
-      )
-    } finally {
-      console.log = orig
-    }
+		try {
+			await Effect.runPromise(
+				(moduleIssuesRemove as any).handler({
+					project: "ACME",
+					moduleId: "mod1",
+					moduleIssueId: "mi1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
 
-    expect(deleted).toBe(true)
-    expect(logs.join("\n")).toContain("mi1")
-  })
-})
+		expect(deleted).toBe(true);
+		expect(logs.join("\n")).toContain("mi1");
+	});
+});
