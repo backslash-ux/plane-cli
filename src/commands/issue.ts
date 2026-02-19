@@ -12,7 +12,6 @@ import {
 } from "../config.js";
 import {
 	findIssueBySeq,
-	getEstimatePointId,
 	getLabelId,
 	getMemberId,
 	getStateId,
@@ -66,12 +65,6 @@ const labelOption = Options.optional(Options.text("label")).pipe(
 	Options.withDescription("Set issue label by name"),
 );
 
-const estimateOption = Options.optional(Options.text("estimate")).pipe(
-	Options.withDescription(
-		"Estimate point value (e.g. '3', 'Medium', 'L') — resolved to UUID from the project's estimate scheme",
-	),
-);
-
 const noAssigneeOption = Options.boolean("no-assignee").pipe(
 	Options.withDescription("Clear all assignees"),
 	Options.withDefault(false),
@@ -86,21 +79,10 @@ export const issueUpdate = Command.make(
 		description: descriptionOption,
 		assignee: assigneeOption,
 		label: labelOption,
-		estimate: estimateOption,
 		noAssignee: noAssigneeOption,
 		ref: refArg,
 	},
-	({
-		ref,
-		state,
-		priority,
-		title,
-		description,
-		assignee,
-		label,
-		estimate,
-		noAssignee,
-	}) =>
+	({ ref, state, priority, title, description, assignee, label, noAssignee }) =>
 		Effect.gen(function* () {
 			const { projectId, seq } = yield* parseIssueRef(ref);
 			const issue = yield* findIssueBySeq(projectId, seq);
@@ -130,17 +112,11 @@ export const issueUpdate = Command.make(
 				const labelId = yield* getLabelId(projectId, label.value);
 				body["label_ids"] = [labelId];
 			}
-			if (estimate._tag === "Some") {
-				body["estimate_point"] = yield* getEstimatePointId(
-					projectId,
-					estimate.value,
-				);
-			}
 
 			if (Object.keys(body).length === 0) {
 				yield* Effect.fail(
 					new Error(
-						"Nothing to update. Specify --state, --priority, --title, --description, --assignee, --label, --estimate, or --no-assignee",
+						"Nothing to update. Specify --state, --priority, --title, --description, --assignee, --label, or --no-assignee",
 					),
 				);
 			}
@@ -224,20 +200,10 @@ export const issueCreate = Command.make(
 		description: createDescriptionOption,
 		assignee: createAssigneeOption,
 		label: createLabelOption,
-		estimate: estimateOption,
 		project: projectRefArg,
 		title: titleArg,
 	},
-	({
-		project,
-		title,
-		priority,
-		state,
-		description,
-		assignee,
-		label,
-		estimate,
-	}) =>
+	({ project, title, priority, state, description, assignee, label }) =>
 		Effect.gen(function* () {
 			const { key, id: projectId } = yield* resolveProject(project);
 			const body: Record<string, unknown> = { name: title };
@@ -255,12 +221,6 @@ export const issueCreate = Command.make(
 			if (label._tag === "Some") {
 				const labelId = yield* getLabelId(projectId, label.value);
 				body["label_ids"] = [labelId];
-			}
-			if (estimate._tag === "Some") {
-				body["estimate_point"] = yield* getEstimatePointId(
-					projectId,
-					estimate.value,
-				);
 			}
 			const raw = yield* api.post(`projects/${projectId}/issues/`, body);
 			const created = yield* decodeOrFail(IssueSchema, raw);

@@ -215,19 +215,3 @@ export type CycleIssue = typeof CycleIssueSchema.Type;
 export const CycleIssuesResponseSchema = Schema.Struct({
 	results: Schema.Array(CycleIssueSchema),
 });
-
-export const EstimatePointSchema = Schema.Struct({
-	id: Schema.String,
-	value: Schema.String,
-	key: Schema.Number,
-});
-export type EstimatePoint = typeof EstimatePointSchema.Type;
-
-export const EstimateSchema = Schema.Struct({
-	id: Schema.String,
-	points: Schema.Array(EstimatePointSchema),
-});
-
-export const EstimatesResponseSchema = Schema.Struct({
-	results: Schema.Array(EstimateSchema),
-});
