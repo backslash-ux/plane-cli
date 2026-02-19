@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "CLI for the Plane project management API",
   "keywords": [
     "plane",
