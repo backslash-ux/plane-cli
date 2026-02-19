@@ -1,0 +1,54 @@
+{
+  "name": "@aaronshaf/plane",
+  "version": "0.1.0",
+  "description": "CLI for the Plane project management API",
+  "keywords": [
+    "plane",
+    "project-management",
+    "cli",
+    "effect",
+    "effect-ts",
+    "typescript"
+  ],
+  "module": "src/bin.ts",
+  "type": "module",
+  "bin": {
+    "plane": "./bin/plane"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aaronshaf/plane-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aaronshaf/plane-cli/issues"
+  },
+  "homepage": "https://github.com/aaronshaf/plane-cli#readme",
+  "scripts": {
+    "dev": "bun src/bin.ts",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "test:coverage:check": "bun scripts/check-coverage.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write src/ tests/",
+    "format:check": "biome check src/ tests/",
+    "check:all": "bun run typecheck && bun run format:check && bun run test:coverage",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.58.0",
+    "@effect/platform": "^0.81.0",
+    "@effect/platform-node": "^0.72.0",
+    "@effect/printer": "^0.47.0",
+    "@effect/printer-ansi": "^0.47.0",
+    "@effect/typeclass": "^0.38.0",
+    "effect": "^3.13.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.2",
+    "@types/node": "^22.0.0",
+    "bun-types": "^1.0.0",
+    "husky": "^9.0.0",
+    "msw": "^2.12.10",
+    "typescript": "^5.7.0"
+  }
+}

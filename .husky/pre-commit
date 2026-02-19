@@ -1,0 +1,7 @@
+# Check file sizes
+echo "Checking file sizes..."
+bun scripts/check-file-size.ts
+
+# Check test coverage
+echo "Checking test coverage..."
+bun run test:coverage:check
