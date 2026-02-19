@@ -65,6 +65,23 @@ const server = setupServer(
 			results: [{ id: "l-bug", name: "Bug", color: "#ff0000" }],
 		}),
 	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/estimates/`,
+		() =>
+			HttpResponse.json({
+				results: [
+					{
+						id: "est-1",
+						points: [
+							{ id: "ep-1", value: "1", key: 0 },
+							{ id: "ep-2", value: "2", key: 1 },
+							{ id: "ep-3", value: "3", key: 2 },
+							{ id: "ep-5", value: "5", key: 3 },
+						],
+					},
+				],
+			}),
+	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
 		HttpResponse.json(MEMBERS),
 	),
@@ -999,12 +1016,12 @@ describe("issueUpdate estimate", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
-				estimate: { _tag: "Some", value: 3 },
+				estimate: { _tag: "Some", value: "3" },
 				noAssignee: false,
 			}),
 		);
 
-		expect((patchedBody as any).estimate_point).toBe(3);
+		expect((patchedBody as any).estimate_point).toBe("ep-3");
 	});
 });
 
@@ -1037,11 +1054,11 @@ describe("issueCreate estimate", () => {
 				description: { _tag: "None" },
 				assignee: { _tag: "None" },
 				label: { _tag: "None" },
-				estimate: { _tag: "Some", value: 5 },
+				estimate: { _tag: "Some", value: "5" },
 			}),
 		);
 
-		expect((postedBody as any).estimate_point).toBe(5);
+		expect((postedBody as any).estimate_point).toBe("ep-5");
 	});
 });
 

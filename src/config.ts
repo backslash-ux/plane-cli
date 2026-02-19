@@ -18,7 +18,7 @@ export const IssueSchema = Schema.Struct({
 	state: Schema.Union(Schema.String, StateSchema),
 	assignees: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 	description_html: Schema.optional(Schema.NullOr(Schema.String)),
-	estimate_point: Schema.optional(Schema.NullOr(Schema.Number)),
+	estimate_point: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type Issue = typeof IssueSchema.Type;
 
@@ -214,4 +214,20 @@ export type CycleIssue = typeof CycleIssueSchema.Type;
 
 export const CycleIssuesResponseSchema = Schema.Struct({
 	results: Schema.Array(CycleIssueSchema),
+});
+
+export const EstimatePointSchema = Schema.Struct({
+	id: Schema.String,
+	value: Schema.String,
+	key: Schema.Number,
+});
+export type EstimatePoint = typeof EstimatePointSchema.Type;
+
+export const EstimateSchema = Schema.Struct({
+	id: Schema.String,
+	points: Schema.Array(EstimatePointSchema),
+});
+
+export const EstimatesResponseSchema = Schema.Struct({
+	results: Schema.Array(EstimateSchema),
 });

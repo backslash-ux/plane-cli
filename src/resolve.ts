@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
 import {
+	EstimatesResponseSchema,
 	IssuesResponseSchema,
 	LabelsResponseSchema,
 	MembersResponseSchema,
@@ -108,6 +109,29 @@ export function getStateId(projectId: string, nameOrGroup: string) {
 		if (!state)
 			return yield* Effect.fail(new Error(`State not found: ${nameOrGroup}`));
 		return state.id;
+	});
+}
+
+export function getEstimatePointId(projectId: string, value: string) {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/estimates/`);
+		const { results } = yield* decodeOrFail(EstimatesResponseSchema, raw);
+		if (results.length === 0)
+			return yield* Effect.fail(
+				new Error("No estimate scheme configured for this project"),
+			);
+		const points = results[0].points;
+		const lower = value.toLowerCase();
+		const point = points.find(
+			(p) => p.value.toLowerCase() === lower || String(p.key) === value,
+		);
+		if (!point)
+			return yield* Effect.fail(
+				new Error(
+					`Estimate point not found: ${value}. Available: ${points.map((p) => p.value).join(", ")}`,
+				),
+			);
+		return point.id;
 	});
 }
 

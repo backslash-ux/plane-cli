@@ -12,6 +12,7 @@ import {
 } from "../config.js";
 import {
 	findIssueBySeq,
+	getEstimatePointId,
 	getLabelId,
 	getMemberId,
 	getStateId,
@@ -65,8 +66,10 @@ const labelOption = Options.optional(Options.text("label")).pipe(
 	Options.withDescription("Set issue label by name"),
 );
 
-const estimateOption = Options.optional(Options.integer("estimate")).pipe(
-	Options.withDescription("Estimate point (0–7)"),
+const estimateOption = Options.optional(Options.text("estimate")).pipe(
+	Options.withDescription(
+		"Estimate point value (e.g. '3', 'Medium', 'L') — resolved to UUID from the project's estimate scheme",
+	),
 );
 
 const noAssigneeOption = Options.boolean("no-assignee").pipe(
@@ -128,7 +131,10 @@ export const issueUpdate = Command.make(
 				body["label_ids"] = [labelId];
 			}
 			if (estimate._tag === "Some") {
-				body["estimate_point"] = estimate.value;
+				body["estimate_point"] = yield* getEstimatePointId(
+					projectId,
+					estimate.value,
+				);
 			}
 
 			if (Object.keys(body).length === 0) {
@@ -251,7 +257,10 @@ export const issueCreate = Command.make(
 				body["label_ids"] = [labelId];
 			}
 			if (estimate._tag === "Some") {
-				body["estimate_point"] = estimate.value;
+				body["estimate_point"] = yield* getEstimatePointId(
+					projectId,
+					estimate.value,
+				);
 			}
 			const raw = yield* api.post(`projects/${projectId}/issues/`, body);
 			const created = yield* decodeOrFail(IssueSchema, raw);
