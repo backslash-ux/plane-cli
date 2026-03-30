@@ -1,3 +1,4 @@
+# yaml-language-server: disable
 name: Publish
 
 on:
@@ -21,12 +22,12 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Run checks
-        run: bun run typecheck && bun run test:coverage:check
+        run: bun run check:all
 
       - name: Publish to npm
         run: bun publish --access public
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_CONFIG_TOKEN }}
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v1
