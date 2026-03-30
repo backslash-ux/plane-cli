@@ -1,10 +1,11 @@
 import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
-import type { Issue } from "./config.js";
+import type { Issue, ProjectDetail } from "./config.js";
 import {
 	IssuesResponseSchema,
 	LabelsResponseSchema,
 	MembersResponseSchema,
+	ProjectDetailSchema,
 	ProjectsResponseSchema,
 	StatesResponseSchema,
 } from "./config.js";
@@ -12,6 +13,27 @@ import { getConfig } from "./user-config.js";
 
 // Cache project list within a process invocation
 let _projectCache: Record<string, string> | null = null;
+let _projectDetailCache: Record<string, ProjectDetail> | null = null;
+
+type ProjectFeatureKey =
+	| "cycle_view"
+	| "module_view"
+	| "page_view"
+	| "inbox_view";
+
+const FEATURE_LABELS: Record<ProjectFeatureKey, string> = {
+	cycle_view: "Cycles",
+	module_view: "Modules",
+	page_view: "Pages",
+	inbox_view: "Intake",
+};
+
+const FEATURE_HINTS: Record<ProjectFeatureKey, string> = {
+	cycle_view: "Enable Cycles in the Plane project settings.",
+	module_view: "Enable Modules in the Plane project settings.",
+	page_view: "Enable Pages in the Plane project settings.",
+	inbox_view: "Enable Intake in the Plane project settings.",
+};
 
 function getConfiguredProject(identifier: string): string {
 	const trimmed = identifier.trim();
@@ -35,6 +57,7 @@ function getConfiguredProject(identifier: string): string {
 /** Clear the project cache — for use in tests only */
 export function _clearProjectCache(): void {
 	_projectCache = null;
+	_projectDetailCache = null;
 }
 
 function getProjectMap(): Effect.Effect<Record<string, string>, Error> {
@@ -47,6 +70,55 @@ function getProjectMap(): Effect.Effect<Record<string, string>, Error> {
 		);
 		return _projectCache;
 	});
+}
+
+function getProjectDetail(
+	projectId: string,
+): Effect.Effect<ProjectDetail, Error> {
+	if (_projectDetailCache?.[projectId]) {
+		return Effect.succeed(_projectDetailCache[projectId]);
+	}
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/`);
+		const project = yield* decodeOrFail(ProjectDetailSchema, raw);
+		_projectDetailCache ??= {};
+		_projectDetailCache[projectId] = project;
+		return project;
+	});
+}
+
+export function getProjectFeatureDetails(projectId: string) {
+	return getProjectDetail(projectId).pipe(
+		Effect.map((project) => ({
+			project,
+			features: {
+				Cycles: project.cycle_view,
+				Modules: project.module_view,
+				Views: project.issue_views_view,
+				Pages: project.page_view,
+				Intake: project.inbox_view,
+			},
+		})),
+	);
+}
+
+export function requireProjectFeature(
+	projectId: string,
+	feature: ProjectFeatureKey,
+): Effect.Effect<void, Error> {
+	return getProjectDetail(projectId).pipe(
+		Effect.flatMap((project) => {
+			if (project[feature]) {
+				return Effect.succeed(void 0);
+			}
+			const featureLabel = FEATURE_LABELS[feature];
+			return Effect.fail(
+				new Error(
+					`Project ${project.identifier} has ${featureLabel} disabled (${feature}=false). ${FEATURE_HINTS[feature]}`,
+				),
+			);
+		}),
+	);
 }
 
 export function resolveProject(

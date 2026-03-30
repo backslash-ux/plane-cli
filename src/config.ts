@@ -73,6 +73,43 @@ export const ProjectSchema = Schema.Struct({
 });
 export type Project = typeof ProjectSchema.Type;
 
+export const ProjectDetailSchema = Schema.Struct({
+	id: Schema.String,
+	identifier: Schema.String,
+	name: Schema.String,
+	module_view: Schema.Boolean,
+	cycle_view: Schema.Boolean,
+	issue_views_view: Schema.Boolean,
+	page_view: Schema.Boolean,
+	inbox_view: Schema.Boolean,
+	estimate: Schema.optional(Schema.NullOr(Schema.String)),
+});
+export type ProjectDetail = typeof ProjectDetailSchema.Type;
+
+export const EstimateSchema = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	description: Schema.optional(Schema.NullOr(Schema.String)),
+	type: Schema.String,
+	last_used: Schema.optional(Schema.Boolean),
+	project: Schema.String,
+	workspace: Schema.String,
+});
+export type Estimate = typeof EstimateSchema.Type;
+
+export const EstimatePointSchema = Schema.Struct({
+	id: Schema.String,
+	estimate: Schema.String,
+	key: Schema.optional(Schema.Number),
+	value: Schema.String,
+	description: Schema.optional(Schema.NullOr(Schema.String)),
+	project: Schema.String,
+	workspace: Schema.String,
+});
+export type EstimatePoint = typeof EstimatePointSchema.Type;
+
+export const EstimatePointsResponseSchema = Schema.Array(EstimatePointSchema);
+
 export const ProjectsResponseSchema = Schema.Struct({
 	results: Schema.Array(ProjectSchema),
 });

@@ -29,6 +29,16 @@ const BASE = "http://xml-output-test.local";
 const WS = "testws";
 
 const PROJECTS = [{ id: "proj-acme", identifier: "ACME", name: "Acme" }];
+const PROJECT_DETAIL = {
+	id: "proj-acme",
+	identifier: "ACME",
+	name: "Acme",
+	module_view: true,
+	cycle_view: true,
+	issue_views_view: true,
+	page_view: true,
+	inbox_view: true,
+};
 const ISSUES = [
 	{
 		id: "i1",
@@ -123,6 +133,9 @@ const STATES = [{ id: "s1", name: "In Progress", group: "started" }];
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
+		HttpResponse.json(PROJECT_DETAIL),
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
 		HttpResponse.json({ results: ISSUES }),

@@ -6,7 +6,12 @@ import {
 	ModulesResponseSchema,
 } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
-import { findIssueBySeq, parseIssueRef, resolveProject } from "../resolve.js";
+import {
+	findIssueBySeq,
+	parseIssueRef,
+	requireProjectFeature,
+	resolveProject,
+} from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
@@ -25,6 +30,7 @@ const moduleIdArg = Args.text({ name: "module-id" }).pipe(
 export function modulesListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "module_view");
 		const raw = yield* api.get(`projects/${id}/modules/`);
 		const { results } = yield* decodeOrFail(ModulesResponseSchema, raw);
 		if (jsonMode) {
@@ -68,6 +74,7 @@ export function moduleIssuesListHandler({
 }) {
 	return Effect.gen(function* () {
 		const { key, id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "module_view");
 		const raw = yield* api.get(
 			`projects/${id}/modules/${moduleId}/module-issues/`,
 		);
@@ -122,6 +129,7 @@ export function moduleIssuesAddHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id: projectId } = yield* resolveProject(project);
+		yield* requireProjectFeature(projectId, "module_view");
 		const { seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		yield* api.post(
@@ -163,6 +171,7 @@ export function moduleIssuesRemoveHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "module_view");
 		yield* api.delete(
 			`projects/${id}/modules/${moduleId}/module-issues/${moduleIssueId}/`,
 		);

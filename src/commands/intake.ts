@@ -3,7 +3,7 @@ import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { IntakeIssuesResponseSchema } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
-import { resolveProject } from "../resolve.js";
+import { requireProjectFeature, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
@@ -27,6 +27,7 @@ const STATUS_LABELS: Record<number, string> = {
 export function intakeListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "inbox_view");
 		const raw = yield* api.get(`projects/${id}/intake-issues/`);
 		const { results } = yield* decodeOrFail(IntakeIssuesResponseSchema, raw);
 		if (jsonMode) {
@@ -78,6 +79,7 @@ export function intakeAcceptHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "inbox_view");
 		yield* api.patch(`projects/${id}/intake-issues/${intakeId}/`, {
 			status: 1,
 		});
@@ -106,6 +108,7 @@ export function intakeRejectHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "inbox_view");
 		yield* api.patch(`projects/${id}/intake-issues/${intakeId}/`, {
 			status: -2,
 		});

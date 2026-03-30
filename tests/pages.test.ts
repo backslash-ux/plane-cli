@@ -18,6 +18,16 @@ const WS = "testws";
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
 ];
+const PROJECT_DETAIL = {
+	id: "proj-acme",
+	identifier: "ACME",
+	name: "Acme Project",
+	module_view: true,
+	cycle_view: true,
+	issue_views_view: true,
+	page_view: true,
+	inbox_view: true,
+};
 const PAGES = [
 	{
 		id: "pg1",
@@ -45,6 +55,9 @@ const NEW_PAGE = {
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
+		HttpResponse.json(PROJECT_DETAIL),
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/pages/`, () =>
 		HttpResponse.json({ results: PAGES }),

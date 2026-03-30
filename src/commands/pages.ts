@@ -3,7 +3,7 @@ import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { PageSchema, PagesResponseSchema } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
-import { resolveProject } from "../resolve.js";
+import { requireProjectFeature, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
@@ -43,6 +43,7 @@ interface PageUpdatePayload {
 export function pagesListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const raw = yield* api.get(`projects/${id}/pages/`);
 		const { results } = yield* decodeOrFail(PagesResponseSchema, raw);
 		if (jsonMode) {
@@ -86,6 +87,7 @@ export function pagesGetHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(JSON.stringify(page, null, 2));
@@ -115,6 +117,7 @@ export function pagesCreateHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const body: PageCreatePayload = { name };
 		if (Option.isSome(description)) {
 			body.description_html = description.value;
@@ -153,6 +156,7 @@ export function pagesUpdateHandler({
 			yield* Effect.fail(new Error("provide at least --name or --description"));
 		}
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const body: PageUpdatePayload = {};
 		if (Option.isSome(name)) body.name = name.value;
 		if (Option.isSome(description)) body.description_html = description.value;
@@ -188,6 +192,7 @@ export function pagesDeleteHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/`);
 		yield* Console.log(`Deleted page ${pageId}`);
 	});
@@ -214,6 +219,7 @@ export function pagesArchiveHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.post(`projects/${id}/pages/${pageId}/archive/`, {});
 		yield* Console.log(`Archived page ${pageId}`);
 	});
@@ -240,6 +246,7 @@ export function pagesUnarchiveHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/archive/`);
 		yield* Console.log(`Unarchived page ${pageId}`);
 	});
@@ -266,6 +273,7 @@ export function pagesLockHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.post(`projects/${id}/pages/${pageId}/lock/`, {});
 		yield* Console.log(`Locked page ${pageId}`);
 	});
@@ -292,6 +300,7 @@ export function pagesUnlockHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/lock/`);
 		yield* Console.log(`Unlocked page ${pageId}`);
 	});
@@ -318,6 +327,7 @@ export function pagesDuplicateHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const raw = yield* api.post(
 			`projects/${id}/pages/${pageId}/duplicate/`,
 			{},

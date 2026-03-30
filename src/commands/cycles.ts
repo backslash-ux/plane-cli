@@ -3,7 +3,12 @@ import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { CycleIssuesResponseSchema, CyclesResponseSchema } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
-import { findIssueBySeq, parseIssueRef, resolveProject } from "../resolve.js";
+import {
+	findIssueBySeq,
+	parseIssueRef,
+	requireProjectFeature,
+	resolveProject,
+} from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
@@ -22,6 +27,7 @@ const cycleIdArg = Args.text({ name: "cycle-id" }).pipe(
 export function cyclesListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "cycle_view");
 		const raw = yield* api.get(`projects/${id}/cycles/`);
 		const { results } = yield* decodeOrFail(CyclesResponseSchema, raw);
 		if (jsonMode) {
@@ -67,6 +73,7 @@ export function cycleIssuesListHandler({
 }) {
 	return Effect.gen(function* () {
 		const { key, id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "cycle_view");
 		const raw = yield* api.get(
 			`projects/${id}/cycles/${cycleId}/cycle-issues/`,
 		);
@@ -121,6 +128,7 @@ export function cycleIssuesAddHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id: projectId } = yield* resolveProject(project);
+		yield* requireProjectFeature(projectId, "cycle_view");
 		const { seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		yield* api.post(`projects/${projectId}/cycles/${cycleId}/cycle-issues/`, {
