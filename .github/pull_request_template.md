@@ -2,9 +2,9 @@
 
 Describe the change and the user-facing outcome.
 
-## Plan Item
+## Related Issue
 
-Link the relevant item in `docs/PLAN.md` and note whether the change updates its implementation or review state.
+Link the relevant GitHub issue, discussion, or explain why no public tracking item was needed.
 
 ## Changes
 
@@ -20,7 +20,7 @@ Link the relevant item in `docs/PLAN.md` and note whether the change updates its
 
 - [ ] `README.md` updated if CLI usage changed
 - [ ] `SKILL.md` updated if AI-agent usage changed
-- [ ] `docs/PLAN.md` updated with status, touched files, and validation notes
+- [ ] `CHANGELOG.md` updated if there is a notable user-facing change
 
 ## Risks Or Follow-Ups
 

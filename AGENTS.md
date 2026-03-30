@@ -13,14 +13,14 @@ Before making non-trivial changes:
 1. Read [README.md](./README.md) for installation and user-facing command expectations.
 2. Read [CONTRIBUTING.md](./CONTRIBUTING.md) for workflow and quality gates.
 3. Read [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for code boundaries.
-4. Read [docs/PLAN.md](./docs/PLAN.md) and match the work to an existing plan item, or add the smallest useful slice before or alongside implementation.
+4. Check GitHub issues and pull requests for related work before starting a non-trivial change.
 
 ## Workflow Expectations
 
 - Keep changes scoped to one useful vertical slice when practical.
-- Update [docs/PLAN.md](./docs/PLAN.md) with implementation state, review state, touched files, and validation notes for non-trivial work.
+- Treat GitHub issues and pull requests as the public work-tracking system for this repository.
 - When command behavior changes, keep user-facing docs aligned: [README.md](./README.md), [SKILL.md](./SKILL.md), and any relevant plan or release notes.
-- Prefer public repository guidance over local-only editor customizations. Local `.github/copilot-*`, prompt, and agent files may exist for maintainers but are not the source of truth for contributors.
+- Prefer public repository guidance over local-only editor customizations. Maintainers may keep private planning notes in `.vscode/docs/`, but those are not the source of truth for contributors.
 
 ## Technical Boundaries
 

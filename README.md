@@ -152,7 +152,6 @@ bun run typecheck
 - [CONTRIBUTING.md](./CONTRIBUTING.md) for development workflow, quality gates, and pull request expectations.
 - [CHANGELOG.md](./CHANGELOG.md) for notable project changes.
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the CLI structure and design boundaries.
-- [docs/PLAN.md](./docs/PLAN.md) for the planned implementation slices and current status.
 - [docs/RELEASING.md](./docs/RELEASING.md) for the maintainer release flow.
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for community behavior expectations.
 - [SECURITY.md](./SECURITY.md) for vulnerability reporting guidance.
@@ -160,7 +159,7 @@ bun run typecheck
 
 ## Contributing
 
-Contributions should start from [docs/PLAN.md](./docs/PLAN.md) for any non-trivial change. Prefer small end-to-end slices, keep command/help/docs updates aligned, and run the narrowest relevant tests plus `bun run typecheck` before sending a change.
+Contributions should happen through GitHub issues and pull requests. Before starting non-trivial work, check for an existing issue or open one describing the problem, proposed CLI workflow, and user impact. Keep changes scoped, keep command/help/docs updates aligned, and run the narrowest relevant tests plus `bun run typecheck` before sending a change.
 
 ## License
 

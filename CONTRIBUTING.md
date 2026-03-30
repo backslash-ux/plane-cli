@@ -11,15 +11,15 @@ Participation in this project is also governed by [CODE_OF_CONDUCT.md](./CODE_OF
 1. Read [README.md](./README.md) for setup and command usage.
 2. If you are using an AI coding agent, read [AGENTS.md](./AGENTS.md) for the repo baseline context.
 3. Read [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the code layout and boundaries.
-4. Read [docs/PLAN.md](./docs/PLAN.md) and match your work to an existing plan item.
+4. Check existing GitHub issues and pull requests to understand whether the work is already proposed, in progress, or intentionally deferred.
 
 ## Development Workflow
 
-1. Start from a plan slice in [docs/PLAN.md](./docs/PLAN.md).
-2. If the requested change is not represented yet, add the smallest useful plan item before or alongside implementation.
-3. Keep the change scoped to one vertical slice when practical.
-4. Update tests and user-facing docs together with code.
-5. Update [docs/PLAN.md](./docs/PLAN.md) with implementation status, review status, touched files, and validation notes before finishing.
+1. Start from a GitHub issue or open one before beginning non-trivial work.
+2. Keep the change scoped to one useful vertical slice when practical.
+3. Update tests and user-facing docs together with code.
+4. Reference the related issue or discussion in your pull request.
+5. Record notable user-facing changes in [CHANGELOG.md](./CHANGELOG.md) when appropriate.
 
 ## Local Setup
 
@@ -73,7 +73,6 @@ When the CLI surface changes, update the relevant public docs together:
 - [AGENTS.md](./AGENTS.md) for public AI-agent contribution context.
 - [CHANGELOG.md](./CHANGELOG.md) for notable user-facing changes.
 - [SKILL.md](./SKILL.md) for AI-agent usage of the CLI.
-- [docs/PLAN.md](./docs/PLAN.md) for implementation and review status.
 
 ## Release Notes
 
@@ -81,7 +80,7 @@ Maintainers should keep [CHANGELOG.md](./CHANGELOG.md) and [docs/RELEASING.md](.
 
 ## Pull Request Checklist
 
-- The change maps to a plan item in [docs/PLAN.md](./docs/PLAN.md).
+- The change links to a related GitHub issue, discussion, or clearly explains why one is not needed.
 - Tests or validation were run and recorded.
 - Public docs were updated if behavior changed.
 - No local-only AI/editor customization files were included in the diff.

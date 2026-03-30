@@ -33,4 +33,4 @@ Describe any workarounds or alternative approaches you considered.
 
 - Links to Plane docs or API endpoints
 - Related issues or pull requests
-- Whether the request should be added to `docs/PLAN.md`
+- Whether this should be tracked as a new GitHub issue or grouped with an existing one

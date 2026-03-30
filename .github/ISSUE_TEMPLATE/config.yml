@@ -6,6 +6,6 @@ contact_links:
   - name: Contributing guide
     url: https://github.com/backslash-ux/plane-cli/blob/main/CONTRIBUTING.md
     about: Review contribution expectations, quality gates, and documentation requirements first.
-  - name: Project plan
-    url: https://github.com/backslash-ux/plane-cli/blob/main/docs/PLAN.md
-    about: Check planned work and implementation status before proposing non-trivial changes.
+  - name: Existing issues
+    url: https://github.com/backslash-ux/plane-cli/issues
+    about: Check open issues and feature requests before filing a new one.

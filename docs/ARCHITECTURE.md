@@ -53,6 +53,6 @@ The CLI starts in `bin/plane`, initializes runtime wiring in `src/bin.ts`, and r
 - The project uses Bun's test runner plus MSW.
 - Tests should mock HTTP interactions and avoid real user configuration.
 
-## Planning Model
+## Work Tracking Model
 
-Non-trivial work should start from [docs/PLAN.md](./PLAN.md). The plan tracks the slice being implemented, what changed, and whether the work has only been validated or fully reviewed.
+Public work tracking for this repository should happen through GitHub issues and pull requests. Maintainers may use local planning notes during development, but public contributor flow should rely on the issue tracker and release documentation instead of private planning documents.

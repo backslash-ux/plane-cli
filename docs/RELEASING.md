@@ -6,9 +6,9 @@ This repository publishes from Git tags that match `v*` through [`.github/workfl
 
 ## Before Releasing
 
-1. Confirm the target work is reflected in [docs/PLAN.md](./PLAN.md).
-2. Update [CHANGELOG.md](../CHANGELOG.md) with user-facing changes.
-3. Ensure public docs such as [README.md](../README.md) and [SKILL.md](../SKILL.md) match the shipped CLI behavior.
+1. Update [CHANGELOG.md](../CHANGELOG.md) with user-facing changes.
+2. Ensure public docs such as [README.md](../README.md) and [SKILL.md](../SKILL.md) match the shipped CLI behavior.
+3. Confirm linked GitHub issues or milestone notes accurately reflect what is shipping.
 4. Run the repository gate locally:
 
 ```bash
@@ -38,5 +38,5 @@ git push origin vX.Y.Z
 
 ## Notes
 
-- If the release changes command behavior, update [docs/PLAN.md](./PLAN.md) review state and validation notes as part of the same change.
+- If the release changes command behavior, keep related GitHub issues, release notes, and docs aligned as part of the same change.
 - If a release uncovers a workflow gap, document it here instead of relying on maintainer memory.
