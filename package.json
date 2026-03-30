@@ -1,12 +1,25 @@
 {
-  "name": "@aaronshaf/plane",
+  "name": "@backslash-ux/plane",
   "publishConfig": {
     "access": "public"
   },
   "version": "1.0.0",
   "description": "CLI for the Plane project management API",
+  "author": "Gabriel Reynold and Contributors",
+  "license": "MIT",
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SKILL.md"
+  ],
   "keywords": [
+    "ai",
+    "agent",
     "plane",
+    "plane-api",
     "project-management",
     "cli",
     "effect",
@@ -20,12 +33,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aaronshaf/plane-cli.git"
+    "url": "git+https://github.com/backslash-ux/plane-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/aaronshaf/plane-cli/issues"
+    "url": "https://github.com/backslash-ux/plane-cli/issues"
   },
-  "homepage": "https://github.com/aaronshaf/plane-cli#readme",
+  "homepage": "https://github.com/backslash-ux/plane-cli#readme",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "scripts": {
     "dev": "bun src/bin.ts",
     "test": "bun test",
@@ -34,7 +50,7 @@
     "typecheck": "tsc --noEmit",
     "format": "biome format --write src/ tests/",
     "format:check": "biome check src/ tests/",
-    "check:all": "bun run typecheck && bun run format:check && bun run test:coverage",
+    "check:all": "bun run typecheck && bun run format:check && bun scripts/check-file-size.ts && bun run test:coverage:check",
     "prepare": "husky"
   },
   "dependencies": {

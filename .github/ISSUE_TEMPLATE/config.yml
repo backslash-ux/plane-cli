@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security policy
+    url: https://github.com/backslash-ux/plane-cli/blob/main/SECURITY.md
+    about: Report suspected vulnerabilities privately instead of opening a public issue.
+  - name: Contributing guide
+    url: https://github.com/backslash-ux/plane-cli/blob/main/CONTRIBUTING.md
+    about: Review contribution expectations, quality gates, and documentation requirements first.
+  - name: Project plan
+    url: https://github.com/backslash-ux/plane-cli/blob/main/docs/PLAN.md
+    about: Check planned work and implementation status before proposing non-trivial changes.

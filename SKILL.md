@@ -1,5 +1,5 @@
 ---
-name: plane
+name: plane-cli
 description: >
   Use when working with Plane project management via the `plane` CLI. Covers
   listing/creating/updating/deleting issues, managing cycles, modules, pages,
@@ -14,7 +14,7 @@ The `plane` CLI wraps the Plane REST API. It is designed for both human and AI
 agent use. Install it globally with bun:
 
 ```bash
-bun install -g @aaronshaf/plane
+bun install -g @backslash-ux/plane
 ```
 
 ## Configuration
