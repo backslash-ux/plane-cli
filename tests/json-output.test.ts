@@ -10,13 +10,13 @@ import {
 	describe,
 	expect,
 	it,
+	mock,
 } from "bun:test";
-import { Effect } from "effect";
-import { http, HttpResponse } from "msw";
+import { Effect, Option } from "effect";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
-import { mock } from "bun:test";
-import { _clearProjectCache } from "@/resolve";
 import { toXml } from "@/output";
+import { _clearProjectCache } from "@/resolve";
 
 // Set jsonMode=true for this entire test file before command modules load
 mock.module("@/output", () => ({
@@ -182,16 +182,16 @@ afterAll(() => {
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
 });
 
 async function captureLogs(fn: () => Promise<void>): Promise<string> {
@@ -208,9 +208,9 @@ async function captureLogs(fn: () => Promise<void>): Promise<string> {
 
 describe("cyclesList --json", () => {
 	it("outputs JSON array of cycles", async () => {
-		const { cyclesList } = await import("@/commands/cycles");
+		const { cyclesListHandler } = await import("@/commands/cycles");
 		const output = await captureLogs(() =>
-			Effect.runPromise((cyclesList as any).handler({ project: "ACME" })),
+			Effect.runPromise(cyclesListHandler({ project: "ACME" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -220,10 +220,10 @@ describe("cyclesList --json", () => {
 
 describe("cycleIssuesList --json", () => {
 	it("outputs JSON array of cycle issues", async () => {
-		const { cycleIssuesList } = await import("@/commands/cycles");
+		const { cycleIssuesListHandler } = await import("@/commands/cycles");
 		const output = await captureLogs(() =>
 			Effect.runPromise(
-				(cycleIssuesList as any).handler({ project: "ACME", cycleId: "cyc1" }),
+				cycleIssuesListHandler({ project: "ACME", cycleId: "cyc1" }),
 			),
 		);
 		const parsed = JSON.parse(output);
@@ -234,9 +234,9 @@ describe("cycleIssuesList --json", () => {
 
 describe("modulesList --json", () => {
 	it("outputs JSON array of modules", async () => {
-		const { modulesList } = await import("@/commands/modules");
+		const { modulesListHandler } = await import("@/commands/modules");
 		const output = await captureLogs(() =>
-			Effect.runPromise((modulesList as any).handler({ project: "ACME" })),
+			Effect.runPromise(modulesListHandler({ project: "ACME" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -246,10 +246,10 @@ describe("modulesList --json", () => {
 
 describe("moduleIssuesList --json", () => {
 	it("outputs JSON array of module issues", async () => {
-		const { moduleIssuesList } = await import("@/commands/modules");
+		const { moduleIssuesListHandler } = await import("@/commands/modules");
 		const output = await captureLogs(() =>
 			Effect.runPromise(
-				(moduleIssuesList as any).handler({
+				moduleIssuesListHandler({
 					project: "ACME",
 					moduleId: "mod1",
 				}),
@@ -263,9 +263,9 @@ describe("moduleIssuesList --json", () => {
 
 describe("intakeList --json", () => {
 	it("outputs JSON array of intake issues", async () => {
-		const { intakeList } = await import("@/commands/intake");
+		const { intakeListHandler } = await import("@/commands/intake");
 		const output = await captureLogs(() =>
-			Effect.runPromise((intakeList as any).handler({ project: "ACME" })),
+			Effect.runPromise(intakeListHandler({ project: "ACME" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -275,9 +275,9 @@ describe("intakeList --json", () => {
 
 describe("pagesList --json", () => {
 	it("outputs JSON array of pages", async () => {
-		const { pagesList } = await import("@/commands/pages");
+		const { pagesListHandler } = await import("@/commands/pages");
 		const output = await captureLogs(() =>
-			Effect.runPromise((pagesList as any).handler({ project: "ACME" })),
+			Effect.runPromise(pagesListHandler({ project: "ACME" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -287,9 +287,9 @@ describe("pagesList --json", () => {
 
 describe("issueActivity --json", () => {
 	it("outputs JSON array of activities", async () => {
-		const { issueActivity } = await import("@/commands/issue");
+		const { issueActivityHandler } = await import("@/commands/issue");
 		const output = await captureLogs(() =>
-			Effect.runPromise((issueActivity as any).handler({ ref: "ACME-1" })),
+			Effect.runPromise(issueActivityHandler({ ref: "ACME-1" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -299,9 +299,9 @@ describe("issueActivity --json", () => {
 
 describe("issueLinkList --json", () => {
 	it("outputs JSON array of links", async () => {
-		const { issueLinkList } = await import("@/commands/issue");
+		const { issueLinkListHandler } = await import("@/commands/issue");
 		const output = await captureLogs(() =>
-			Effect.runPromise((issueLinkList as any).handler({ ref: "ACME-1" })),
+			Effect.runPromise(issueLinkListHandler({ ref: "ACME-1" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -311,9 +311,9 @@ describe("issueLinkList --json", () => {
 
 describe("issueCommentsList --json", () => {
 	it("outputs JSON array of comments", async () => {
-		const { issueCommentsList } = await import("@/commands/issue");
+		const { issueCommentsListHandler } = await import("@/commands/issue");
 		const output = await captureLogs(() =>
-			Effect.runPromise((issueCommentsList as any).handler({ ref: "ACME-1" })),
+			Effect.runPromise(issueCommentsListHandler({ ref: "ACME-1" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -323,9 +323,9 @@ describe("issueCommentsList --json", () => {
 
 describe("issueWorklogsList --json", () => {
 	it("outputs JSON array of worklogs", async () => {
-		const { issueWorklogsList } = await import("@/commands/issue");
+		const { issueWorklogsListHandler } = await import("@/commands/issue");
 		const output = await captureLogs(() =>
-			Effect.runPromise((issueWorklogsList as any).handler({ ref: "ACME-1" })),
+			Effect.runPromise(issueWorklogsListHandler({ ref: "ACME-1" })),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
@@ -335,14 +335,14 @@ describe("issueWorklogsList --json", () => {
 
 describe("issuesList --json", () => {
 	it("outputs JSON array of issues", async () => {
-		const { issuesList } = await import("@/commands/issues");
+		const { issuesListHandler } = await import("@/commands/issues");
 		const output = await captureLogs(() =>
 			Effect.runPromise(
-				(issuesList as any).handler({
+				issuesListHandler({
 					project: "ACME",
-					state: { _tag: "None" },
-					assignee: { _tag: "None" },
-					priority: { _tag: "None" },
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
 				}),
 			),
 		);

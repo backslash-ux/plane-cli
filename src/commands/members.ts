@@ -2,7 +2,7 @@ import { Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { MembersResponseSchema } from "../config.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 
 export const membersList = Command.make("list", {}, () =>
 	Effect.gen(function* () {

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import { Effect, Schema } from "effect";
 import {
-	WorklogSchema,
-	WorklogsResponseSchema,
-	IntakeIssueSchema,
-	IntakeIssuesResponseSchema,
-	PageSchema,
-	PagesResponseSchema,
 	CommentSchema,
 	CommentsResponseSchema,
 	CycleIssueSchema,
 	CycleIssuesResponseSchema,
+	IntakeIssueSchema,
+	IntakeIssuesResponseSchema,
+	PageSchema,
+	PagesResponseSchema,
+	WorklogSchema,
+	WorklogsResponseSchema,
 } from "@/config";
 
 async function decode<A, I>(

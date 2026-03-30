@@ -8,7 +8,7 @@ import {
 	it,
 } from "bun:test";
 import { Effect, Option } from "effect";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
 
@@ -60,16 +60,16 @@ afterAll(() => server.close());
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
 });
 
 describe("pagesList", () => {
@@ -364,7 +364,12 @@ describe("pagesDuplicate", () => {
 		server.use(
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/pages/pg1/duplicate/`,
-				() => HttpResponse.json({ ...NEW_PAGE, id: "pg-dup", name: "New Page (copy)" }),
+				() =>
+					HttpResponse.json({
+						...NEW_PAGE,
+						id: "pg-dup",
+						name: "New Page (copy)",
+					}),
 			),
 		);
 		const { pagesDuplicateHandler } = await import("@/commands/pages");
