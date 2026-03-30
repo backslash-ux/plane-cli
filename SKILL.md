@@ -40,6 +40,10 @@ Local setup writes `./.plane/config.json`. Effective config resolution is:
 PLANE_* environment variables > nearest .plane/config.json > ~/.config/plane/config.json
 ```
 
+`plane init --local` also fetches the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands fail with explicit feature-disabled errors when the project has them turned off.
+It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse current project conventions instead of creating duplicates.
+It also creates or updates `AGENTS.md` in that directory with a managed Plane context section at the bottom so AI agents know to read `.plane/project-context.json` before changing project-specific Plane resources.
+
 Or set environment variables (override saved config):
 
 ```bash

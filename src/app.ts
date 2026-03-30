@@ -71,6 +71,8 @@ FOR AI AGENTS / BOTS
   - Use PLANE_WORKSPACE to select the workspace
   - Use PLANE_PROJECT or 'plane projects use PROJ' to persist a current project
   - Local config lives in '.plane/config.json' and is resolved from the current directory upward
+  - 'plane init --local' also writes '.plane/project-context.json' with existing states, labels, and estimate points for the selected project
+  - 'plane init --local' also creates or updates 'AGENTS.md' so local AI agents reuse '.plane/project-context.json' for project-specific context
   - Full Plane REST API reference (180+ endpoints):
     https://developers.plane.so/api-reference/introduction`,
 	),

@@ -1,8 +1,24 @@
 import * as readline from "node:readline";
 import { Command, Options } from "@effect/cli";
-import { Console, Effect } from "effect";
+import { Console, Effect, type Schema } from "effect";
 import { decodeOrFail } from "../api.js";
-import { ProjectsResponseSchema } from "../config.js";
+import {
+	EstimatePointsResponseSchema,
+	EstimateSchema,
+	LabelsResponseSchema,
+	ProjectDetailSchema,
+	ProjectsResponseSchema,
+	StatesResponseSchema,
+} from "../config.js";
+import {
+	getLocalAgentsFilePath,
+	writeLocalProjectAgentsFile,
+} from "../project-agents.js";
+import {
+	buildProjectContextSnapshot,
+	getLocalProjectContextFilePath,
+	writeLocalProjectContextSnapshot,
+} from "../project-context.js";
 import {
 	type ConfigScope,
 	getConfigDetails,
@@ -13,6 +29,11 @@ import {
 	writeGlobalStoredConfig,
 	writeLocalStoredConfig,
 } from "../user-config.js";
+
+interface ProjectFeatureSummary {
+	label: string;
+	enabled: boolean;
+}
 
 function prompt(rl: readline.Interface, question: string): Promise<string> {
 	return new Promise((resolve) => rl.question(question, resolve));
@@ -157,15 +178,27 @@ function fetchProjectsForConfig(config: {
 	workspace: string;
 	token: string;
 }) {
+	return fetchDecodedFromConfig(
+		ProjectsResponseSchema,
+		config,
+		"projects/",
+	).pipe(Effect.map(({ results }) => results));
+}
+
+function requestJsonFromConfig(
+	config: {
+		host: string;
+		workspace: string;
+		token: string;
+	},
+	path: string,
+) {
 	return Effect.gen(function* () {
 		const response = yield* Effect.tryPromise({
 			try: () =>
-				fetch(
-					`${config.host}/api/v1/workspaces/${config.workspace}/projects/`,
-					{
-						headers: { "X-Api-Key": config.token },
-					},
-				),
+				fetch(`${config.host}/api/v1/workspaces/${config.workspace}/${path}`, {
+					headers: { "X-Api-Key": config.token },
+				}),
 			catch: (error) =>
 				error instanceof Error ? error : new Error(String(error)),
 		});
@@ -182,9 +215,92 @@ function fetchProjectsForConfig(config: {
 			catch: (error) =>
 				error instanceof Error ? error : new Error(String(error)),
 		});
-		const { results } = yield* decodeOrFail(ProjectsResponseSchema, raw);
-		return results;
+		return raw;
 	});
+}
+
+function fetchDecodedFromConfig<A, I>(
+	schema: Schema.Schema<A, I>,
+	config: {
+		host: string;
+		workspace: string;
+		token: string;
+	},
+	path: string,
+) {
+	return requestJsonFromConfig(config, path).pipe(
+		Effect.flatMap((raw) => decodeOrFail(schema, raw)),
+	);
+}
+
+function fetchLocalProjectHelperForConfig(
+	config: {
+		host: string;
+		workspace: string;
+		token: string;
+	},
+	project: { id: string; identifier: string; name: string },
+) {
+	return Effect.gen(function* () {
+		const detail = yield* fetchDecodedFromConfig(
+			ProjectDetailSchema,
+			config,
+			`projects/${project.id}/`,
+		);
+		const { results: states } = yield* fetchDecodedFromConfig(
+			StatesResponseSchema,
+			config,
+			`projects/${project.id}/states/`,
+		);
+		const { results: labels } = yield* fetchDecodedFromConfig(
+			LabelsResponseSchema,
+			config,
+			`projects/${project.id}/labels/`,
+		);
+
+		let estimate = null;
+		let estimatePoints: readonly import("../config.js").EstimatePoint[] = [];
+		if (detail.estimate) {
+			estimate = yield* fetchDecodedFromConfig(
+				EstimateSchema,
+				config,
+				`projects/${project.id}/estimates/`,
+			);
+			estimatePoints = yield* fetchDecodedFromConfig(
+				EstimatePointsResponseSchema,
+				config,
+				`projects/${project.id}/estimates/${estimate.id}/estimate-points/`,
+			);
+		}
+
+		return {
+			detail,
+			snapshot: buildProjectContextSnapshot({
+				project,
+				detail,
+				states,
+				labels,
+				estimate,
+				estimatePoints,
+			}),
+		};
+	});
+}
+
+function summarizeProjectFeatures(project: {
+	cycle_view: boolean;
+	module_view: boolean;
+	issue_views_view: boolean;
+	page_view: boolean;
+	inbox_view: boolean;
+}): ProjectFeatureSummary[] {
+	return [
+		{ label: "Cycles", enabled: project.cycle_view },
+		{ label: "Modules", enabled: project.module_view },
+		{ label: "Views", enabled: project.issue_views_view },
+		{ label: "Pages", enabled: project.page_view },
+		{ label: "Intake", enabled: project.inbox_view },
+	];
 }
 
 export function initHandler(
@@ -350,6 +466,72 @@ export function initHandler(
 				)}`,
 			);
 		}
+
+		if (scope === "local" && savedDefaultProject) {
+			const selectedProject =
+				projectsResult._tag === "Right"
+					? projectsResult.right.find(
+							(project) =>
+								project.identifier.toUpperCase() ===
+								savedDefaultProject.toUpperCase(),
+						)
+					: undefined;
+			if (selectedProject) {
+				const projectHelper = yield* Effect.either(
+					fetchLocalProjectHelperForConfig(
+						{
+							host: mergedHost,
+							workspace: mergedWorkspace,
+							token: mergedToken,
+						},
+						selectedProject,
+					),
+				);
+				if (projectHelper._tag === "Right") {
+					yield* Console.log("\nProject feature flags:");
+					const featureSummary = summarizeProjectFeatures(
+						projectHelper.right.detail,
+					);
+					for (const feature of featureSummary) {
+						yield* Console.log(
+							`  ${feature.label}: ${feature.enabled ? "enabled" : "disabled"}`,
+						);
+					}
+					const disabled = featureSummary
+						.filter((feature) => !feature.enabled)
+						.map((feature) => feature.label);
+					if (disabled.length > 0) {
+						yield* Console.log(
+							`  Disabled features will fail with explicit errors until Plane enables them: ${disabled.join(", ")}`,
+						);
+					}
+
+					writeLocalProjectContextSnapshot(projectHelper.right.snapshot);
+					const helperPath = getLocalProjectContextFilePath();
+					writeLocalProjectAgentsFile(projectHelper.right.snapshot);
+					const agentsPath = getLocalAgentsFilePath();
+					yield* Console.log(`\nProject helper saved to ${helperPath}`);
+					yield* Console.log(
+						`  States:    ${projectHelper.right.snapshot.helpers.states.total}`,
+					);
+					yield* Console.log(
+						`  Labels:    ${projectHelper.right.snapshot.helpers.labels.total}`,
+					);
+					if (projectHelper.right.snapshot.helpers.estimate.enabled) {
+						yield* Console.log(
+							`  Estimate:  ${projectHelper.right.snapshot.helpers.estimate.name} (${projectHelper.right.snapshot.helpers.estimate.points.length} points)`,
+						);
+					} else {
+						yield* Console.log("  Estimate:  disabled");
+					}
+					yield* Console.log(`Local AGENTS.md updated at ${agentsPath}`);
+				} else {
+					yield* Console.log(
+						`\nWarning: could not load project helper data for ${selectedProject.identifier}: ${projectHelper.left.message}`,
+					);
+				}
+			}
+		}
 	});
 }
 
@@ -367,6 +549,6 @@ export const localInit = Command.make("init", {}, () =>
 	initHandler({ global: false, local: true }, "local"),
 ).pipe(
 	Command.withDescription(
-		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory.",
+		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, and updates AGENTS.md with project-context guidance for AI agents.",
 	),
 );

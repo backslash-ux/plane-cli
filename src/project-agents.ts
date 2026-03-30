@@ -1,0 +1,69 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import type { ProjectContextSnapshot } from "./project-context.js";
+import { getLocalConfigDir } from "./user-config.js";
+
+const MANAGED_SECTION_START = "<!-- plane-cli local project context start -->";
+const MANAGED_SECTION_END = "<!-- plane-cli local project context end -->";
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildManagedSection(snapshot: ProjectContextSnapshot): string {
+	return [
+		MANAGED_SECTION_START,
+		"## Plane Project Context",
+		`This directory is scoped to Plane project ${snapshot.project.identifier} (${snapshot.project.name}).`,
+		"",
+		"When working as an AI agent in this directory:",
+		"- Read `./.plane/project-context.json` before planning or applying Plane project changes.",
+		"- Reuse the existing states, labels, and estimate points in that snapshot instead of creating duplicates.",
+		"- Respect the feature flags in that snapshot before using cycles, modules, pages, intake, or estimates.",
+		"- Rerun `plane init --local` from this directory whenever the Plane project configuration changes so this context stays current.",
+		"",
+		"This section is managed by `plane-cli` and is updated by `plane init --local`.",
+		MANAGED_SECTION_END,
+		"",
+	].join("\n");
+}
+
+function upsertManagedSection(
+	existingContent: string,
+	managedSection: string,
+): string {
+	const managedPattern = new RegExp(
+		`${escapeRegExp(MANAGED_SECTION_START)}[\\s\\S]*?${escapeRegExp(MANAGED_SECTION_END)}\\n?`,
+		"m",
+	);
+
+	if (managedPattern.test(existingContent)) {
+		return existingContent.replace(managedPattern, managedSection);
+	}
+
+	const trimmed = existingContent.trimEnd();
+	if (!trimmed) {
+		return managedSection;
+	}
+
+	return `${trimmed}\n\n${managedSection}`;
+}
+
+export function getLocalAgentsFilePath(cwd = process.cwd()): string {
+	return path.join(path.dirname(getLocalConfigDir(cwd)), "AGENTS.md");
+}
+
+export function writeLocalProjectAgentsFile(
+	snapshot: ProjectContextSnapshot,
+	cwd = process.cwd(),
+): void {
+	const filePath = getLocalAgentsFilePath(cwd);
+	const existingContent = fs.existsSync(filePath)
+		? fs.readFileSync(filePath, "utf8")
+		: "";
+	const nextContent = upsertManagedSection(
+		existingContent,
+		buildManagedSection(snapshot),
+	);
+	fs.writeFileSync(filePath, nextContent, "utf8");
+}
