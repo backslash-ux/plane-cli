@@ -8,4 +8,5 @@ dist/
 .github/instructions/
 .github/prompts/
 .github/agents/
+.vscode/docs/
 
