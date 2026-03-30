@@ -3,3 +3,10 @@ dist/
 .env
 *.env
 
+# Local AI/editor customization files
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+.github/agents/
+.vscode/docs/
+
