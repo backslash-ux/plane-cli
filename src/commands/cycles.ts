@@ -1,13 +1,17 @@
-import { Command, Args } from "@effect/cli";
+import { Args, Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
-import { CyclesResponseSchema, CycleIssuesResponseSchema } from "../config.js";
-import { resolveProject, parseIssueRef, findIssueBySeq } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
+import { CycleIssuesResponseSchema, CyclesResponseSchema } from "../config.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
+import { findIssueBySeq, parseIssueRef, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const cycleIdArg = Args.text({ name: "cycle-id" }).pipe(
 	Args.withDescription("Cycle UUID (from 'plane cycles list PROJECT')"),
@@ -44,11 +48,11 @@ export function cyclesListHandler({ project }: { project: string }) {
 
 export const cyclesList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	cyclesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List cycles for a project. Shows cycle UUID, status, date range, and name.\n\nExample:\n  plane cycles list PROJ",
+		"List cycles for a project. Shows cycle UUID, status, date range, and name. Omit PROJECT to use the saved current project.\n\nExample:\n  plane cycles list PROJ",
 	),
 );
 

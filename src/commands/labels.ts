@@ -1,19 +1,23 @@
-import { Command, Options, Args } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
-import { LabelsResponseSchema, LabelSchema } from "../config.js";
+import { LabelSchema, LabelsResponseSchema } from "../config.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 import { resolveProject } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 // --- labels list ---
 
 export const labelsList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	({ project }) =>
 		Effect.gen(function* () {
 			const { id } = yield* resolveProject(project);

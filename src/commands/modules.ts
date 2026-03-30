@@ -1,16 +1,20 @@
-import { Command, Args } from "@effect/cli";
+import { Args, Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import {
-	ModulesResponseSchema,
 	ModuleIssuesResponseSchema,
+	ModulesResponseSchema,
 } from "../config.js";
-import { resolveProject, parseIssueRef, findIssueBySeq } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
+import { findIssueBySeq, parseIssueRef, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const moduleIdArg = Args.text({ name: "module-id" }).pipe(
 	Args.withDescription("Module UUID (from 'plane modules list PROJECT')"),
@@ -45,11 +49,11 @@ export function modulesListHandler({ project }: { project: string }) {
 
 export const modulesList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	modulesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List modules for a project. Shows module UUID, status, and name.\n\nExample:\n  plane modules list PROJ",
+		"List modules for a project. Shows module UUID, status, and name. Omit PROJECT to use the saved current project.\n\nExample:\n  plane modules list PROJ",
 	),
 );
 

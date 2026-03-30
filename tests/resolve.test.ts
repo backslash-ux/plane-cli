@@ -8,15 +8,15 @@ import {
 	it,
 } from "bun:test";
 import { Effect } from "effect";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import {
-	resolveProject,
-	parseIssueRef,
-	findIssueBySeq,
-	getStateId,
-	getMemberId,
 	_clearProjectCache,
+	findIssueBySeq,
+	getMemberId,
+	getStateId,
+	parseIssueRef,
+	resolveProject,
 } from "@/resolve";
 
 const BASE = "http://test.local";
@@ -75,16 +75,17 @@ afterAll(() => server.close());
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
+	delete process.env.PLANE_PROJECT;
 });
 
 describe("resolveProject", () => {
@@ -125,6 +126,20 @@ describe("resolveProject", () => {
 		);
 		const result = await Effect.runPromise(resolveProject("WEB"));
 		expect(result.id).toBe("proj-web"); // still from cache
+	});
+
+	it("resolves @current from PLANE_PROJECT", async () => {
+		process.env.PLANE_PROJECT = "WEB";
+		const result = await Effect.runPromise(resolveProject("@current"));
+		expect(result.key).toBe("WEB");
+		expect(result.id).toBe("proj-web");
+	});
+
+	it("resolves blank project from PLANE_PROJECT", async () => {
+		process.env.PLANE_PROJECT = "ACME";
+		const result = await Effect.runPromise(resolveProject(""));
+		expect(result.key).toBe("ACME");
+		expect(result.id).toBe("proj-acme");
 	});
 });
 

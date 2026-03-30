@@ -1,13 +1,17 @@
-import { Command, Args, Options } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
-import { PagesResponseSchema, PageSchema } from "../config.js";
+import { PageSchema, PagesResponseSchema } from "../config.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 import { resolveProject } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const pageIdArg = Args.text({ name: "page-id" }).pipe(
 	Args.withDescription("Page UUID (from 'plane pages list')"),
@@ -25,8 +29,14 @@ const descriptionOption = Options.optional(Options.text("description")).pipe(
 	Options.withDescription("Page description as HTML (e.g. '<p>Hello</p>')"),
 );
 
-interface PageCreatePayload { name: string; description_html?: string; }
-interface PageUpdatePayload { name?: string; description_html?: string; }
+interface PageCreatePayload {
+	name: string;
+	description_html?: string;
+}
+interface PageUpdatePayload {
+	name?: string;
+	description_html?: string;
+}
 
 // --- pages list ---
 
@@ -57,11 +67,11 @@ export function pagesListHandler({ project }: { project: string }) {
 
 export const pagesList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	pagesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List pages for a project. Shows page UUID, last updated date, and title.\n\nExample:\n  plane pages list PROJ",
+		"List pages for a project. Shows page UUID, last updated date, and title. Omit PROJECT to use the saved current project.\n\nExample:\n  plane pages list PROJ",
 	),
 );
 
@@ -121,7 +131,7 @@ export const pagesCreate = Command.make(
 	pagesCreateHandler,
 ).pipe(
 	Command.withDescription(
-		"Create a new page.\n\nExample:\n  plane pages create --name \"My Page\" PROJ",
+		'Create a new page.\n\nExample:\n  plane pages create --name "My Page" PROJ',
 	),
 );
 
@@ -154,11 +164,16 @@ export function pagesUpdateHandler({
 
 export const pagesUpdate = Command.make(
 	"update",
-	{ project: projectArg, pageId: pageIdArg, name: nameOptionalOption, description: descriptionOption },
+	{
+		project: projectArg,
+		pageId: pageIdArg,
+		name: nameOptionalOption,
+		description: descriptionOption,
+	},
 	pagesUpdateHandler,
 ).pipe(
 	Command.withDescription(
-		"Update a page's name or description.\n\nExample:\n  plane pages update --name \"New Title\" PROJ <page-id>",
+		'Update a page\'s name or description.\n\nExample:\n  plane pages update --name "New Title" PROJ <page-id>',
 	),
 );
 
@@ -303,7 +318,10 @@ export function pagesDuplicateHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		const raw = yield* api.post(`projects/${id}/pages/${pageId}/duplicate/`, {});
+		const raw = yield* api.post(
+			`projects/${id}/pages/${pageId}/duplicate/`,
+			{},
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Duplicated page ${page.id}: ${page.name}`);
 	});
@@ -326,7 +344,15 @@ export const pages = Command.make("pages").pipe(
 		"Manage project pages (documentation). Subcommands: list, get, create, update, delete, archive, unarchive, lock, unlock, duplicate\n\nExamples:\n  plane pages list PROJ\n  plane pages get PROJ <page-id>",
 	),
 	Command.withSubcommands([
-		pagesList, pagesGet, pagesCreate, pagesUpdate, pagesDelete,
-		pagesArchive, pagesUnarchive, pagesLock, pagesUnlock, pagesDuplicate,
+		pagesList,
+		pagesGet,
+		pagesCreate,
+		pagesUpdate,
+		pagesDelete,
+		pagesArchive,
+		pagesUnarchive,
+		pagesLock,
+		pagesUnlock,
+		pagesDuplicate,
 	]),
 );

@@ -22,18 +22,44 @@ bun install -g @backslash-ux/plane
 Run once to save credentials interactively:
 
 ```bash
-plane init
+plane init -g
 ```
 
-Saves to `~/.config/plane/config.json` (mode 0600). Safe to re-run.
+Saves to `~/.config/plane/config.json` (mode 0600). Safe to re-run. The interactive flow can also save a current project for repeated project-scoped commands.
+
+For path-local overrides in the current directory:
+
+```bash
+plane init --local
+plane . init
+```
+
+Local setup writes `./.plane/config.json`. Effective config resolution is:
+
+```text
+PLANE_* environment variables > nearest .plane/config.json > ~/.config/plane/config.json
+```
 
 Or set environment variables (override saved config):
 
 ```bash
 export PLANE_API_TOKEN=your-token
-export PLANE_HOST=https://plane.so          # or your self-hosted URL
-export PLANE_WORKSPACE=your-workspace-slug
+export PLANE_HOST=https://plane.so
+export PLANE_WORKSPACE=your-workspace
+export PLANE_PROJECT=PROJ                   # optional current-project override
 ```
+
+You can also save a current project explicitly:
+
+```bash
+plane projects list
+plane projects use PROJ
+plane projects use PROJ --local
+plane projects use PROJ --global
+plane projects current
+```
+
+If a local config is active in the current path, `plane projects use PROJ` writes there by default.
 
 ---
 
@@ -42,6 +68,7 @@ export PLANE_WORKSPACE=your-workspace-slug
 | Term | Meaning |
 |---|---|
 | **Project identifier** | Short uppercase string, e.g. `ACME`, `WEB`. Shown by `plane projects list`. |
+| **Current project** | Optional saved project identifier used when a list-style command omits the project argument or when a command uses `@current`. |
 | **Issue ref** | `PROJ-29` — identifier + sequence number. |
 | **State group** | `backlog` \| `unstarted` \| `started` \| `completed` \| `cancelled` |
 | **Priority** | `urgent` \| `high` \| `medium` \| `low` \| `none` |
@@ -73,6 +100,9 @@ plane modules list PROJ --xml
 
 ```bash
 plane projects list
+plane projects use PROJ
+plane projects use PROJ --local
+plane projects current
 plane projects list --xml
 ```
 
@@ -83,6 +113,7 @@ plane projects list --xml
 ### List
 
 ```bash
+plane issues list
 plane issues list PROJ
 plane issues list PROJ --state started
 plane issues list PROJ --state backlog
@@ -103,6 +134,7 @@ plane issue get PROJ-29
 
 ```bash
 plane issue create PROJ "Issue title"
+plane issue create @current "Issue title"
 plane issue create --priority high --state started PROJ "Fix lint pipeline"
 plane issue create --description "Detailed context" PROJ "Add dark mode"
 plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"
@@ -173,6 +205,7 @@ plane issue worklogs add --description "code review" PROJ-29 30
 ## States
 
 ```bash
+plane states list
 plane states list PROJ
 plane states list PROJ --xml
 ```
@@ -184,6 +217,7 @@ State IDs are UUIDs unique per project. Always fetch live — never hardcode.
 ## Labels
 
 ```bash
+plane labels list
 plane labels list PROJ
 plane labels list PROJ --xml
 plane labels create PROJ "bug"
@@ -204,6 +238,7 @@ plane members list --xml
 ## Cycles (sprints)
 
 ```bash
+plane cycles list
 plane cycles list PROJ
 plane cycles list PROJ --xml
 plane cycles issues list PROJ <cycle-id>
@@ -217,6 +252,7 @@ Cycle IDs are UUIDs. Fetch them from `plane cycles list PROJ`.
 ## Modules
 
 ```bash
+plane modules list
 plane modules list PROJ
 plane modules list PROJ --xml
 plane modules issues list PROJ <module-id>
@@ -229,6 +265,7 @@ plane modules issues remove PROJ <module-id> <module-issue-id>  # use join ID, n
 ## Intake (triage)
 
 ```bash
+plane intake list
 plane intake list PROJ
 plane intake accept PROJ <intake-id>
 plane intake reject PROJ <intake-id>
@@ -241,6 +278,7 @@ Statuses: `pending`, `accepted`, `rejected`, `snoozed`, `duplicate`.
 ## Pages (documentation)
 
 ```bash
+plane pages list
 plane pages list PROJ
 plane pages list PROJ --xml
 plane pages get PROJ <page-id>             # full JSON including description_html

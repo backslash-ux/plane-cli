@@ -37,10 +37,26 @@ bun install -g @backslash-ux/plane
 ## Setup
 
 ```bash
-plane init
+plane init -g
 ```
 
-Prompts for your Plane host, workspace slug, and API token. Saves to `~/.config/plane/config.json` (mode 0600). Safe to re-run.
+Prompts for your Plane host, workspace, and API token. Global setup saves to `~/.config/plane/config.json` (mode 0600). Safe to re-run.
+It also offers an optional current-project selection so repeated project-scoped commands can reuse the same context.
+
+For path-local overrides in the current project directory:
+
+```bash
+plane init --local
+plane . init
+```
+
+Local setup writes `./.plane/config.json`. When the CLI runs, it resolves config with this precedence:
+
+```text
+environment variables > nearest .plane/config.json > ~/.config/plane/config.json
+```
+
+The local config is discovered from the current working directory upward, so a config written at the repo root applies inside nested folders unless a deeper `.plane/config.json` overrides it.
 
 You can also use environment variables (override saved config):
 
@@ -48,19 +64,37 @@ You can also use environment variables (override saved config):
 PLANE_API_TOKEN=...
 PLANE_HOST=https://plane.so
 PLANE_WORKSPACE=myworkspace
+PLANE_PROJECT=PROJ               # optional saved-project override
 ```
+
+To persist a current project after setup:
+
+```bash
+plane projects list
+plane projects use PROJ
+plane projects use PROJ --local
+plane projects use PROJ --global
+plane projects current
+```
+
+When a local config is active in the current path, `plane projects use PROJ` writes there by default; otherwise it writes to global config. Once a current project is saved, list-style commands such as `plane issues list`, `plane cycles list`, `plane modules list`, `plane pages list`, `plane states list`, `plane labels list`, and `plane intake list` can omit the project argument. Other project-scoped commands can use `@current` instead of repeating the identifier.
 
 ## Common Commands
 
 ```bash
 # Projects
 plane projects list
+plane projects use PROJ
+plane projects use PROJ --local
+plane projects current
 
 # Issues
+plane issues list
 plane issues list PROJ
 plane issues list PROJ --state started
 plane issue get PROJ-29
 plane issue create PROJ "Title"
+plane issue create @current "Title"
 plane issue update PROJ-29 --state done --priority high
 plane issue delete PROJ-29
 

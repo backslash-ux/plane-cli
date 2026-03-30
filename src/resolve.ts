@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
+import type { Issue } from "./config.js";
 import {
 	IssuesResponseSchema,
 	LabelsResponseSchema,
@@ -7,10 +8,29 @@ import {
 	ProjectsResponseSchema,
 	StatesResponseSchema,
 } from "./config.js";
-import type { Issue } from "./config.js";
+import { getConfig } from "./user-config.js";
 
 // Cache project list within a process invocation
 let _projectCache: Record<string, string> | null = null;
+
+function getConfiguredProject(identifier: string): string {
+	const trimmed = identifier.trim();
+	if (
+		trimmed &&
+		trimmed !== "." &&
+		trimmed.toLowerCase() !== "@current" &&
+		trimmed.toLowerCase() !== "@default"
+	) {
+		return trimmed;
+	}
+	const defaultProject = getConfig().defaultProject.trim();
+	if (defaultProject) {
+		return defaultProject;
+	}
+	throw new Error(
+		"No default project configured. Run 'plane init', 'plane init --local', 'plane . init', 'plane projects use PROJ', or set PLANE_PROJECT.",
+	);
+}
 
 /** Clear the project cache — for use in tests only */
 export function _clearProjectCache(): void {
@@ -32,7 +52,7 @@ function getProjectMap(): Effect.Effect<Record<string, string>, Error> {
 export function resolveProject(
 	identifier: string,
 ): Effect.Effect<{ key: string; id: string }, Error> {
-	const key = identifier.toUpperCase();
+	const key = getConfiguredProject(identifier).toUpperCase();
 	return getProjectMap().pipe(
 		Effect.flatMap((map) => {
 			const id = map[key];

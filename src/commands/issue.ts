@@ -1,15 +1,17 @@
-import { Command, Options, Args } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import {
-	IssueSchema,
 	ActivitiesResponseSchema,
-	IssueLinksResponseSchema,
-	IssueLinkSchema,
 	CommentsResponseSchema,
-	WorklogsResponseSchema,
+	IssueLinkSchema,
+	IssueLinksResponseSchema,
+	IssueSchema,
 	WorklogSchema,
+	WorklogsResponseSchema,
 } from "../config.js";
+import { escapeHtmlText } from "../format.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 import {
 	findIssueBySeq,
 	getLabelId,
@@ -18,8 +20,6 @@ import {
 	parseIssueRef,
 	resolveProject,
 } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
-import { escapeHtmlText } from "../format.js";
 
 const refArg = Args.text({ name: "ref" }).pipe(
 	Args.withDescription("Issue reference, e.g. PROJ-29"),
@@ -219,7 +219,9 @@ const titleArg = Args.text({ name: "title" }).pipe(
 	Args.withDescription("Issue title"),
 );
 const projectRefArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ). Use '@current' for the saved default project.",
+	),
 );
 
 const createPriorityOption = Options.optional(
@@ -300,7 +302,7 @@ export const issueCreate = Command.make(
 	issueCreateHandler,
 ).pipe(
 	Command.withDescription(
-		'Create a new issue in a project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"\n  plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"',
+		'Create a new issue in a project. Use @current to target the saved default project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create @current "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"\n  plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"',
 	),
 );
 // --- issue activity ---
@@ -401,7 +403,7 @@ export function issueLinkAddHandler({
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: Record<string, string> = { url };
-		if (Option.isSome(title)) body["title"] = title.value;
+		if (Option.isSome(title)) body.title = title.value;
 		const raw = yield* api.post(
 			`projects/${projectId}/issues/${issue.id}/issue-links/`,
 			body,

@@ -2,11 +2,12 @@ node_modules/
 dist/
 .env
 *.env
+.plane/
 
 # Local AI/editor customization files
 .github/copilot-instructions.md
 .github/instructions/
 .github/prompts/
 .github/agents/
-.vscode/docs/
+.vscode/
 

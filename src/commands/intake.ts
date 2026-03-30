@@ -1,21 +1,25 @@
-import { Command, Options, Args } from "@effect/cli";
+import { Args, Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { IntakeIssuesResponseSchema } from "../config.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 import { resolveProject } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 // Intake status codes: -2=rejected, -1=snoozed, 0=pending, 1=accepted, 2=duplicate
 const STATUS_LABELS: Record<number, string> = {
 	[-2]: "rejected",
 	[-1]: "snoozed",
-	[0]: "pending",
-	[1]: "accepted",
-	[2]: "duplicate",
+	0: "pending",
+	1: "accepted",
+	2: "duplicate",
 };
 
 // --- intake list ---
@@ -51,11 +55,11 @@ export function intakeListHandler({ project }: { project: string }) {
 
 export const intakeList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	intakeListHandler,
 ).pipe(
 	Command.withDescription(
-		"List intake (triage) issues for a project. Shows status: pending, accepted, rejected, snoozed, duplicate.\n\nExample:\n  plane intake list PROJ",
+		"List intake (triage) issues for a project. Shows status: pending, accepted, rejected, snoozed, duplicate. Omit PROJECT to use the saved current project.\n\nExample:\n  plane intake list PROJ",
 	),
 );
 
