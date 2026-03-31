@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ProjectContextSnapshot } from "./project-context.js";
 import { getLocalConfigDir } from "./user-config.js";
 
@@ -80,4 +81,73 @@ export function writeLocalProjectAgentsFile(
 		buildManagedSection(snapshot),
 	);
 	fs.writeFileSync(filePath, nextContent, "utf8");
+}
+
+// ---------------------------------------------------------------------------
+// SKILL section – embeds SKILL.md content into AGENTS.md so agents have the
+// full CLI usage guide inline.
+// ---------------------------------------------------------------------------
+
+const SKILL_SECTION_START = "<!-- plane-cli skill start -->";
+const SKILL_SECTION_END = "<!-- plane-cli skill end -->";
+
+function buildSkillSection(skillContent: string): string {
+	return [
+		SKILL_SECTION_START,
+		skillContent.trimEnd(),
+		SKILL_SECTION_END,
+		"",
+	].join("\n");
+}
+
+function upsertSkillSection(
+	existingContent: string,
+	skillContent: string,
+): string {
+	const skillPattern = new RegExp(
+		`${escapeRegExp(SKILL_SECTION_START)}[\\s\\S]*?${escapeRegExp(SKILL_SECTION_END)}\\n?`,
+		"m",
+	);
+	const section = buildSkillSection(skillContent);
+	if (skillPattern.test(existingContent)) {
+		return existingContent.replace(skillPattern, section);
+	}
+	const trimmed = existingContent.trimEnd();
+	if (!trimmed) {
+		return section;
+	}
+	return `${trimmed}\n\n${section}`;
+}
+
+export function getPackageSkillPath(): string {
+	// src/project-agents.ts -> package root is one directory up
+	const srcDir = path.dirname(fileURLToPath(import.meta.url));
+	return path.join(srcDir, "..", "SKILL.md");
+}
+
+export function readPackageSkillContent(): string | null {
+	const skillPath = getPackageSkillPath();
+	if (!fs.existsSync(skillPath)) {
+		return null;
+	}
+	return fs.readFileSync(skillPath, "utf8");
+}
+
+export function importSkillIntoAgentsFile(
+	skillContent: string,
+	cwd = process.cwd(),
+): void {
+	const filePath = getLocalAgentsFilePath(cwd);
+	const existingContent = fs.existsSync(filePath)
+		? fs.readFileSync(filePath, "utf8")
+		: "";
+	const nextContent = upsertSkillSection(existingContent, skillContent);
+	fs.writeFileSync(filePath, nextContent, "utf8");
+}
+
+export function hasSkillSectionInAgentsFile(cwd = process.cwd()): boolean {
+	const filePath = getLocalAgentsFilePath(cwd);
+	if (!fs.existsSync(filePath)) return false;
+	const content = fs.readFileSync(filePath, "utf8");
+	return content.includes(SKILL_SECTION_START);
 }

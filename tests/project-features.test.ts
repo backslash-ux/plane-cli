@@ -279,3 +279,94 @@ describe("feature gates", () => {
 		expect(agentsContent).toContain("plane projects current");
 	});
 });
+
+describe("SKILL.md import into AGENTS.md", () => {
+	it("imports SKILL.md when user answers 'y'", async () => {
+		const { initHandler } = await import("@/commands/init");
+		const { getLocalAgentsFilePath } = await import("@/project-agents");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		process.chdir(repoDir);
+		// host, workspace, token, project selection, skill import
+		promptResponses = ["", "", "", "1", "y"];
+		await Effect.runPromise(
+			initHandler({ global: false, local: true }, "local"),
+		);
+		const agentsPath = getLocalAgentsFilePath(repoDir);
+		const agentsContent = fs.readFileSync(agentsPath, "utf8");
+		expect(agentsContent).toContain("<!-- plane-cli skill start -->");
+		expect(agentsContent).toContain("<!-- plane-cli skill end -->");
+	});
+
+	it("does not import SKILL.md when user declines (default N)", async () => {
+		const { initHandler } = await import("@/commands/init");
+		const { getLocalAgentsFilePath } = await import("@/project-agents");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		process.chdir(repoDir);
+		// empty response = default "N"
+		promptResponses = ["", "", "", "1", ""];
+		await Effect.runPromise(
+			initHandler({ global: false, local: true }, "local"),
+		);
+		const agentsPath = getLocalAgentsFilePath(repoDir);
+		const agentsContent = fs.readFileSync(agentsPath, "utf8");
+		expect(agentsContent).not.toContain("<!-- plane-cli skill start -->");
+	});
+
+	it("idempotently updates existing SKILL section on re-run when user confirms", async () => {
+		const { initHandler } = await import("@/commands/init");
+		const { getLocalAgentsFilePath } = await import("@/project-agents");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		process.chdir(repoDir);
+		// First run: import skill
+		promptResponses = ["", "", "", "1", "y"];
+		await Effect.runPromise(
+			initHandler({ global: false, local: true }, "local"),
+		);
+		// Second run: user confirms update (default Y when already present)
+		promptResponses = ["", "", "", "1", ""];
+		await Effect.runPromise(
+			initHandler({ global: false, local: true }, "local"),
+		);
+		const agentsPath = getLocalAgentsFilePath(repoDir);
+		const agentsContent = fs.readFileSync(agentsPath, "utf8");
+		expect(agentsContent.match(/<!-- plane-cli skill start -->/g)?.length).toBe(
+			1,
+		);
+		expect(agentsContent.match(/<!-- plane-cli skill end -->/g)?.length).toBe(
+			1,
+		);
+	});
+
+	it("importSkillIntoAgentsFile creates section in a new file", async () => {
+		const { importSkillIntoAgentsFile, getLocalAgentsFilePath } = await import(
+			"@/project-agents"
+		);
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		importSkillIntoAgentsFile("# CLI Guide\nAll commands here.", repoDir);
+		const filePath = getLocalAgentsFilePath(repoDir);
+		const content = fs.readFileSync(filePath, "utf8");
+		expect(content).toContain("<!-- plane-cli skill start -->");
+		expect(content).toContain("# CLI Guide");
+		expect(content).toContain("<!-- plane-cli skill end -->");
+	});
+
+	it("hasSkillSectionInAgentsFile returns false before import", async () => {
+		const { hasSkillSectionInAgentsFile } = await import("@/project-agents");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		expect(hasSkillSectionInAgentsFile(repoDir)).toBe(false);
+	});
+
+	it("hasSkillSectionInAgentsFile returns true after import", async () => {
+		const { importSkillIntoAgentsFile, hasSkillSectionInAgentsFile } =
+			await import("@/project-agents");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		importSkillIntoAgentsFile("# CLI Guide", repoDir);
+		expect(hasSkillSectionInAgentsFile(repoDir)).toBe(true);
+	});
+});
