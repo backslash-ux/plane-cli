@@ -124,4 +124,26 @@ describe("user config layering", () => {
 		expect(config.sources.workspace).toBe("env");
 		expect(config.sources.defaultProject).toBe("env");
 	});
+
+	it("normalizes inherited hosts without an explicit scheme", async () => {
+		const { getConfigDetails, writeGlobalStoredConfig } = await import(
+			"@/user-config"
+		);
+
+		writeGlobalStoredConfig({
+			host: "plane.domain.com/",
+			workspace: "workspace-1",
+			token: "token-1",
+		});
+
+		const config = getConfigDetails(tempHome);
+
+		expect(config.host).toBe("https://plane.domain.com");
+		expect(config.sources.host).toBe("global");
+
+		process.env.PLANE_HOST = "api.plane.local";
+		const envConfig = getConfigDetails(tempHome);
+		expect(envConfig.host).toBe("https://api.plane.local");
+		expect(envConfig.sources.host).toBe("env");
+	});
 });

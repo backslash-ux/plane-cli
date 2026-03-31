@@ -36,8 +36,15 @@ export interface PlaneConfigDetails extends PlaneConfig {
 
 const DEFAULT_HOST = "https://plane.so";
 
-function normalizeHost(host: string): string {
-	return host.replace(/\/$/, "");
+export function normalizeHost(host: string): string {
+	const trimmed = host.trim().replace(/\/$/, "");
+	if (!trimmed) {
+		return trimmed;
+	}
+	if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+		return trimmed;
+	}
+	return `https://${trimmed}`;
 }
 
 function cleanConfig(config: StoredPlaneConfig): StoredPlaneConfig {
