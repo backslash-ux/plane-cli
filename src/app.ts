@@ -60,7 +60,7 @@ ALL SUBCOMMANDS
   pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
   states list         List workflow states for a project
   labels list         List labels for a project
-  members list        List members of a project
+  members list        List workspace members
 
 FOR AI AGENTS / BOTS
   - Add --json to any list command for JSON output (array of objects)
