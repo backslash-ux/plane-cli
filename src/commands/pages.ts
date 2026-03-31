@@ -107,7 +107,7 @@ export function pagesGetHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
 		const page = yield* decodeOrFail(PageSchema, raw);
@@ -179,7 +179,7 @@ export function pagesUpdateHandler({
 		if (Option.isNone(name) && Option.isNone(description)) {
 			yield* Effect.fail(new Error("provide at least --name or --description"));
 		}
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		const body: PageUpdatePayload = {};
 		if (Option.isSome(name)) body.name = name.value;
@@ -215,7 +215,7 @@ export function pagesDeleteHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/`);
 		yield* Console.log(`Deleted page ${pageId}`);
@@ -242,7 +242,7 @@ export function pagesArchiveHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		yield* api.post(`projects/${id}/pages/${pageId}/archive/`, {});
 		yield* Console.log(`Archived page ${pageId}`);
@@ -269,7 +269,7 @@ export function pagesUnarchiveHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/archive/`);
 		yield* Console.log(`Unarchived page ${pageId}`);
@@ -296,7 +296,7 @@ export function pagesLockHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		yield* api.post(`projects/${id}/pages/${pageId}/lock/`, {});
 		yield* Console.log(`Locked page ${pageId}`);
@@ -323,7 +323,7 @@ export function pagesUnlockHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/lock/`);
 		yield* Console.log(`Unlocked page ${pageId}`);
@@ -350,9 +350,12 @@ export function pagesDuplicateHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { key, id } = yield* resolveProject(project);
+		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		const raw = yield* api.post(`projects/${id}/pages/${pageId}/duplicate/`, {});
+		const raw = yield* api.post(
+			`projects/${id}/pages/${pageId}/duplicate/`,
+			{},
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Duplicated page ${page.id}: ${page.name}`);
 	});

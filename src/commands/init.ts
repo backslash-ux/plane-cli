@@ -338,104 +338,103 @@ export function initHandler(
 		>;
 
 		try {
-		const host = yield* Effect.promise(() =>
-			prompt(
-				rl,
-				promptLabel("Plane host URL", scope, existing.host, effective.host),
-			),
-		);
-		const workspace = yield* Effect.promise(() =>
-			prompt(
-				rl,
-				promptLabel(
-					"Workspace",
-					scope,
-					existing.workspace,
-					effective.workspace,
+			const host = yield* Effect.promise(() =>
+				prompt(
+					rl,
+					promptLabel("Plane host URL", scope, existing.host, effective.host),
 				),
-			),
-		);
-		const token = yield* Effect.promise(() =>
-			prompt(
-				rl,
-				promptLabel("API token", scope, existing.token, effective.token, {
-					hidden: true,
-				}),
-			),
-		);
-
-		savedHost =
-			scope === "global"
-				? resolveGlobalValue(
-						host,
-						existing.host || effective.host || "https://plane.so",
-					)
-				: resolveLocalValue(host, existing.host);
-		savedWorkspace =
-			scope === "global"
-				? resolveGlobalValue(
-						workspace,
-						existing.workspace || effective.workspace,
-					)
-				: resolveLocalValue(workspace, existing.workspace);
-		savedToken =
-			scope === "global"
-				? resolveGlobalValue(token, existing.token || effective.token)
-				: resolveLocalValue(token, existing.token);
-
-		const mergedHost = savedHost ?? effective.host ?? "https://plane.so";
-		normalizedHost = normalizeHost(mergedHost);
-		mergedWorkspace = savedWorkspace ?? effective.workspace;
-		mergedToken = savedToken ?? effective.token;
-
-		if (!mergedToken) {
-			yield* Effect.fail(new Error("API token is required"));
-		}
-		if (!mergedWorkspace) {
-			yield* Effect.fail(new Error("Workspace is required"));
-		}
-
-		projectsResult = yield* Effect.either(
-			fetchProjectsForConfig({
-				host: normalizedHost,
-				workspace: mergedWorkspace,
-				token: mergedToken,
-			}),
-		);
-		if (projectsResult._tag === "Right" && projectsResult.right.length > 0) {
-			yield* Console.log("\nAvailable projects:");
-			yield* Console.log(
-				projectsResult.right
-					.map(
-						(project, index) =>
-							`${index + 1}. ${project.identifier}  ${project.name}`,
-					)
-					.join("\n"),
 			);
-			const selectedProject = yield* Effect.promise(() =>
+			const workspace = yield* Effect.promise(() =>
 				prompt(
 					rl,
 					promptLabel(
-						"Default project number or identifier",
+						"Workspace",
 						scope,
-						existing.defaultProject,
-						effective.defaultProject,
-						{ clearHint: true },
+						existing.workspace,
+						effective.workspace,
 					),
 				),
 			);
-			savedDefaultProject = resolveProjectSelection(
-				selectedProject,
-				projectsResult.right,
-				existing.defaultProject,
-				scope,
+			const token = yield* Effect.promise(() =>
+				prompt(
+					rl,
+					promptLabel("API token", scope, existing.token, effective.token, {
+						hidden: true,
+					}),
+				),
 			);
-		} else if (projectsResult._tag === "Left") {
-			yield* Console.log(
-				`\nWarning: could not load projects for selection (${projectsResult.left.message}). Continuing without changing the current-project override.`,
-			);
-		}
 
+			savedHost =
+				scope === "global"
+					? resolveGlobalValue(
+							host,
+							existing.host || effective.host || "https://plane.so",
+						)
+					: resolveLocalValue(host, existing.host);
+			savedWorkspace =
+				scope === "global"
+					? resolveGlobalValue(
+							workspace,
+							existing.workspace || effective.workspace,
+						)
+					: resolveLocalValue(workspace, existing.workspace);
+			savedToken =
+				scope === "global"
+					? resolveGlobalValue(token, existing.token || effective.token)
+					: resolveLocalValue(token, existing.token);
+
+			const mergedHost = savedHost ?? effective.host ?? "https://plane.so";
+			normalizedHost = normalizeHost(mergedHost);
+			mergedWorkspace = savedWorkspace ?? effective.workspace;
+			mergedToken = savedToken ?? effective.token;
+
+			if (!mergedToken) {
+				yield* Effect.fail(new Error("API token is required"));
+			}
+			if (!mergedWorkspace) {
+				yield* Effect.fail(new Error("Workspace is required"));
+			}
+
+			projectsResult = yield* Effect.either(
+				fetchProjectsForConfig({
+					host: normalizedHost,
+					workspace: mergedWorkspace,
+					token: mergedToken,
+				}),
+			);
+			if (projectsResult._tag === "Right" && projectsResult.right.length > 0) {
+				yield* Console.log("\nAvailable projects:");
+				yield* Console.log(
+					projectsResult.right
+						.map(
+							(project, index) =>
+								`${index + 1}. ${project.identifier}  ${project.name}`,
+						)
+						.join("\n"),
+				);
+				const selectedProject = yield* Effect.promise(() =>
+					prompt(
+						rl,
+						promptLabel(
+							"Default project number or identifier",
+							scope,
+							existing.defaultProject,
+							effective.defaultProject,
+							{ clearHint: true },
+						),
+					),
+				);
+				savedDefaultProject = resolveProjectSelection(
+					selectedProject,
+					projectsResult.right,
+					existing.defaultProject,
+					scope,
+				);
+			} else if (projectsResult._tag === "Left") {
+				yield* Console.log(
+					`\nWarning: could not load projects for selection (${projectsResult.left.message}). Continuing without changing the current-project override.`,
+				);
+			}
 		} finally {
 			rl.close();
 		}
@@ -486,11 +485,12 @@ export function initHandler(
 			);
 		}
 
-		const activeDefaultProject = savedDefaultProject ?? effective.defaultProject;
+		const activeDefaultProject =
+			savedDefaultProject ?? effective.defaultProject;
 		if (scope === "local" && activeDefaultProject) {
 			const selectedProject =
-				projectsResult!._tag === "Right"
-					? projectsResult!.right.find(
+				projectsResult?._tag === "Right"
+					? projectsResult?.right.find(
 							(project) =>
 								project.identifier.toUpperCase() ===
 								activeDefaultProject.toUpperCase(),
