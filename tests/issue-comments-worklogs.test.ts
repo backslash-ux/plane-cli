@@ -63,6 +63,10 @@ const server = setupServer(
 		() => HttpResponse.json({ results: COMMENTS }),
 	),
 	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/worklogs/`,
+		() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+	),
+	http.get(
 		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 		() => HttpResponse.json({ results: WORKLOGS }),
 	),
@@ -242,6 +246,10 @@ describe("issueWorklogsList", () => {
 	it("shows 'No worklogs' when empty", async () => {
 		server.use(
 			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/worklogs/`,
+				() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+			),
+			http.get(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 				() => HttpResponse.json({ results: [] }),
 			),
@@ -262,6 +270,10 @@ describe("issueWorklogsList", () => {
 describe("issueWorklogsAdd", () => {
 	it("logs time without description", async () => {
 		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/worklogs/`,
+				() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+			),
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 				async ({ request }) => {
@@ -295,6 +307,10 @@ describe("issueWorklogsAdd", () => {
 
 	it("logs time with description", async () => {
 		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/worklogs/`,
+				() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+			),
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 				async ({ request }) => {
@@ -331,6 +347,10 @@ describe("issueWorklogsAdd", () => {
 
 	it("handles missing logged_by_detail in worklogs list", async () => {
 		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/worklogs/`,
+				() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+			),
 			http.get(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
 				() =>

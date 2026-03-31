@@ -50,7 +50,7 @@ const server = setupServer(
 		HttpResponse.json({ results: ISSUES }),
 	),
 	http.get(
-		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/links/`,
 		() => HttpResponse.json({ results: LINKS }),
 	),
 );
@@ -109,7 +109,7 @@ describe("issueLinkList", () => {
 	it("shows 'No links' when empty", async () => {
 		server.use(
 			http.get(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/links/`,
 				() => HttpResponse.json({ results: [] }),
 			),
 		);
@@ -133,7 +133,7 @@ describe("issueLinkAdd", () => {
 	it("adds a link without title", async () => {
 		server.use(
 			http.post(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/links/`,
 				async ({ request }) => {
 					const body = (await request.json()) as { url?: string };
 					return HttpResponse.json({
@@ -170,7 +170,7 @@ describe("issueLinkAdd", () => {
 	it("adds a link with title", async () => {
 		server.use(
 			http.post(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/links/`,
 				async ({ request }) => {
 					const body = (await request.json()) as {
 						url?: string;
@@ -212,7 +212,7 @@ describe("issueLinkRemove", () => {
 		let deleted = false;
 		server.use(
 			http.delete(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/lnk1/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/links/lnk1/`,
 				() => {
 					deleted = true;
 					return new HttpResponse(null, { status: 204 });

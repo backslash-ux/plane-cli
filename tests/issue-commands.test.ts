@@ -57,6 +57,14 @@ const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
 		HttpResponse.json({ results: ISSUES }),
 	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/:issueId/`,
+		({ params }) => {
+			const issue = ISSUES.find((i) => i.id === params.issueId);
+			if (issue) return HttpResponse.json(issue);
+			return new HttpResponse(null, { status: 404 });
+		},
+	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/states/`, () =>
 		HttpResponse.json({ results: STATES }),
 	),
@@ -346,6 +354,17 @@ describe("issueUpdate", () => {
 						state: "s1",
 					});
 				},
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				() =>
+					HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "urgent",
+						state: "s1",
+					}),
 			),
 		);
 

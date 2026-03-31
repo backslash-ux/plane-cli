@@ -11,6 +11,14 @@ import {
 	WorklogsResponseSchema,
 } from "../config.js";
 import { escapeHtmlText } from "../format.js";
+import {
+	type IssueCreatePayload,
+	type IssueUpdatePayload,
+	issueLinkPaths,
+	issueWorklogPaths,
+	requestWithFallback,
+	type WorklogPayload,
+} from "../issue-support.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
 import {
 	findIssueBySeq,
@@ -24,29 +32,6 @@ import {
 const refArg = Args.text({ name: "ref" }).pipe(
 	Args.withDescription("Issue reference, e.g. PROJ-29"),
 );
-// --- Typed payload interfaces ---
-interface IssueUpdatePayload {
-	state?: string;
-	priority?: string;
-	name?: string;
-	description_html?: string;
-	assignees?: string[];
-	label_ids?: string[];
-}
-
-interface IssueCreatePayload {
-	name: string;
-	priority?: string;
-	state?: string;
-	description_html?: string;
-	assignees?: string[];
-	label_ids?: string[];
-}
-
-interface WorklogPayload {
-	duration: number;
-	description?: string;
-}
 // --- issue get ---
 export function issueGetHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
@@ -155,7 +140,11 @@ export function issueUpdateHandler({
 			`projects/${projectId}/issues/${issue.id}/`,
 			body,
 		);
-		const updated = yield* decodeOrFail(IssueSchema, raw);
+		yield* decodeOrFail(IssueSchema, raw);
+		const refreshedRaw = yield* api.get(
+			`projects/${projectId}/issues/${issue.id}/`,
+		);
+		const updated = yield* decodeOrFail(IssueSchema, refreshedRaw);
 		const stateName =
 			typeof updated.state === "object" ? updated.state.name : updated.state;
 		yield* Console.log(
@@ -354,8 +343,10 @@ export function issueLinkListHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* api.get(
-			`projects/${projectId}/issues/${issue.id}/issue-links/`,
+		const raw = yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id),
+			(path) => api.get(path),
+			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const { results } = yield* decodeOrFail(IssueLinksResponseSchema, raw);
 		if (jsonMode) {
@@ -404,9 +395,10 @@ export function issueLinkAddHandler({
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: Record<string, string> = { url };
 		if (Option.isSome(title)) body.title = title.value;
-		const raw = yield* api.post(
-			`projects/${projectId}/issues/${issue.id}/issue-links/`,
-			body,
+		const raw = yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id),
+			(path) => api.post(path, body),
+			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const link = yield* decodeOrFail(IssueLinkSchema, raw);
 		yield* Console.log(`Link added: ${link.id}  ${link.url}`);
@@ -437,8 +429,10 @@ export function issueLinkRemoveHandler({
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		yield* api.delete(
-			`projects/${projectId}/issues/${issue.id}/issue-links/${linkId}/`,
+		yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id).map((path) => `${path}${linkId}/`),
+			(path) => api.delete(path),
+			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
 		yield* Console.log(`Link ${linkId} removed from ${ref}`);
 	});
@@ -570,8 +564,10 @@ export function issueWorklogsListHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* api.get(
-			`projects/${projectId}/issues/${issue.id}/worklogs/`,
+		const raw = yield* requestWithFallback(
+			issueWorklogPaths(projectId, issue.id),
+			(path) => api.get(path),
+			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const { results } = yield* decodeOrFail(WorklogsResponseSchema, raw);
 		if (jsonMode) {
@@ -628,9 +624,10 @@ export function issueWorklogsAddHandler({
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: WorklogPayload = { duration };
 		if (Option.isSome(description)) body.description = description.value;
-		const raw = yield* api.post(
-			`projects/${projectId}/issues/${issue.id}/worklogs/`,
-			body,
+		const raw = yield* requestWithFallback(
+			issueWorklogPaths(projectId, issue.id),
+			(path) => api.post(path, body),
+			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const log = yield* decodeOrFail(WorklogSchema, raw);
 		const hrs = (log.duration / 60).toFixed(1);
