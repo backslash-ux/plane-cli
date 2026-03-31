@@ -7,6 +7,8 @@ import {
 	expect,
 	it,
 } from "bun:test";
+import { Command } from "@effect/cli";
+import { NodeContext } from "@effect/platform-node";
 import { Effect, Option } from "effect";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
@@ -89,7 +91,31 @@ afterEach(() => {
 	delete process.env.PLANE_HOST;
 	delete process.env.PLANE_WORKSPACE;
 	delete process.env.PLANE_API_TOKEN;
+	delete process.env.PLANE_PROJECT;
 });
+
+async function runModulesCli(argv: string[]): Promise<{ logs: string[] }> {
+	const { modules } = await import("@/commands/modules");
+
+	const root = Command.make("plane").pipe(Command.withSubcommands([modules]));
+	const cli = Command.run(root, { name: "plane", version: "0.0.0" });
+
+	const logs: string[] = [];
+	const orig = console.log;
+	console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+	try {
+		await Effect.runPromise(
+			cli(["_", "_", ...argv]).pipe(Effect.provide(NodeContext.layer)),
+		);
+	} catch (error) {
+		logs.push(`ERROR: ${String(error)}`);
+	} finally {
+		console.log = orig;
+	}
+
+	return { logs };
+}
 
 describe("modulesList", () => {
 	it("lists modules for a project", async () => {
@@ -161,6 +187,57 @@ describe("modulesList", () => {
 });
 
 describe("modulesCreate", () => {
+	it("parses the public CLI entrypoint and maps create flags to the API payload", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json(
+						{
+							id: "mod-cli",
+							name: "Design System Rollout",
+							status: "in-progress",
+							description: "Ship tokens and docs",
+						},
+						{ status: 201 },
+					);
+				},
+			),
+		);
+
+		const { logs } = await runModulesCli([
+			"modules",
+			"create",
+			"--name",
+			"Design System Rollout",
+			"--description",
+			"Ship tokens and docs",
+			"--status",
+			"in_progress",
+			"--start-date",
+			"2026-04-01",
+			"--target-date",
+			"2026-04-30",
+			"--lead",
+			"Jane Doe",
+			"ACME",
+		]);
+
+		expect(postedBody).toEqual({
+			name: "Design System Rollout",
+			description: "Ship tokens and docs",
+			status: "in-progress",
+			start_date: "2026-04-01",
+			target_date: "2026-04-30",
+			lead: "mem1",
+		});
+		expect(logs.join("\n")).toContain(
+			"Created module: Design System Rollout (mod-cli)",
+		);
+	});
+
 	it("creates a module with only a name", async () => {
 		let postedBody: unknown;
 		server.use(
@@ -259,6 +336,24 @@ describe("modulesCreate", () => {
 		expect(logs.join("\n")).toContain(
 			"Created module: Design System Rollout (mod4)",
 		);
+	});
+
+	it("fails fast on invalid create dates before calling the API", async () => {
+		const { modulesCreateHandler } = await import("@/commands/modules");
+
+		await expect(
+			Effect.runPromise(
+				modulesCreateHandler({
+					project: "ACME",
+					name: "Bad Dates",
+					description: Option.none(),
+					status: Option.none(),
+					startDate: Option.some("2026-02-31"),
+					targetDate: Option.none(),
+					lead: Option.none(),
+				}),
+			),
+		).rejects.toThrow("--start-date must be a valid date in YYYY-MM-DD format");
 	});
 });
 

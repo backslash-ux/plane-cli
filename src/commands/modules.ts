@@ -83,6 +83,32 @@ function normalizeModuleStatus(status: string): string {
 	return status === "in_progress" ? "in-progress" : status;
 }
 
+function validateModuleDateInput(
+	value: string,
+	flagName: "--start-date" | "--target-date",
+): Effect.Effect<string, Error> {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+		return Effect.fail(
+			new Error(`${flagName} must be a valid date in YYYY-MM-DD format`),
+		);
+	}
+
+	const [year, month, day] = value.split("-").map(Number);
+	const parsed = new Date(Date.UTC(year, month - 1, day));
+	const isValidDate =
+		parsed.getUTCFullYear() === year &&
+		parsed.getUTCMonth() === month - 1 &&
+		parsed.getUTCDate() === day;
+
+	if (!isValidDate) {
+		return Effect.fail(
+			new Error(`${flagName} must be a valid date in YYYY-MM-DD format`),
+		);
+	}
+
+	return Effect.succeed(value);
+}
+
 // --- modules list ---
 
 export function modulesListHandler({ project }: { project: string }) {
@@ -151,10 +177,16 @@ export function modulesCreateHandler({
 			body.status = normalizeModuleStatus(status.value);
 		}
 		if (Option.isSome(startDate)) {
-			body.start_date = startDate.value;
+			body.start_date = yield* validateModuleDateInput(
+				startDate.value,
+				"--start-date",
+			);
 		}
 		if (Option.isSome(targetDate)) {
-			body.target_date = targetDate.value;
+			body.target_date = yield* validateModuleDateInput(
+				targetDate.value,
+				"--target-date",
+			);
 		}
 		if (Option.isSome(lead)) {
 			body.lead = yield* getMemberId(lead.value);

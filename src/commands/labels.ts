@@ -1,5 +1,5 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Console, Effect } from "effect";
+import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { LabelSchema, LabelsResponseSchema } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
@@ -76,7 +76,7 @@ export function labelsCreateHandler({
 }: {
 	project: string;
 	name: string;
-	color: { _tag: "Some"; value: string } | { _tag: "None" };
+	color: Option.Option<string>;
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
@@ -85,7 +85,7 @@ export function labelsCreateHandler({
 			color?: string;
 		}
 		const body: LabelPayload = { name };
-		if (color._tag === "Some") body.color = color.value;
+		if (Option.isSome(color)) body.color = color.value;
 		const raw = yield* api.post(`projects/${id}/labels/`, body);
 		const label = yield* decodeOrFail(LabelSchema, raw);
 		yield* Console.log(`Created label: ${label.name} (${label.id})`);
