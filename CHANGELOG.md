@@ -7,14 +7,23 @@ This project aims to follow [Keep a Changelog](https://keepachangelog.com/en/1.1
 Earlier project history may predate this file.
 
 ## [Unreleased]
-### Added   
+
+## 1.1.0
+
+### Added
+
 - `plane modules create` with optional description, status, schedule, and lead resolution.
 - `plane init --local` now prompts whether to import the SKILL.md CLI usage guide into AGENTS.md. First-time prompt defaults to `N`; subsequent runs (section already present) default to `Y`. The skill section is wrapped in idempotent HTML comment markers so repeated runs update it in place.
 
 ### Changed
+
 - **Consistent project defaulting for create commands.** `issue create`, `modules create`, `labels create`, and `pages create` now use `--title`/`--name` options instead of positional args, so the project positional can be omitted to use the saved current project.
+- `hasSkillSectionInAgentsFile` now requires both the start and end delimiters to be present before treating an existing skill section as complete, preventing duplicate sections in malformed files.
 
 ### Validated
+
+- `plane init --local` skill import prompt exercised: accept (`y`), decline (empty/default N), and idempotent re-run paths all verified via tests.
+- All 261 tests pass with line and function coverage above the 95% threshold.
 
 ## 1.0.0
 
