@@ -16,6 +16,7 @@ import {
 	getMemberId,
 	getStateId,
 	parseIssueRef,
+	resolveCycle,
 	resolveProject,
 } from "@/resolve";
 
@@ -67,6 +68,14 @@ const server = setupServer(
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
 		HttpResponse.json(MEMBERS),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/`, () =>
+		HttpResponse.json({
+			results: [
+				{ id: "cyc-1", name: "Sprint 1", status: "started" },
+				{ id: "cyc-2", name: "Sprint 2", status: "backlog" },
+			],
+		}),
 	),
 );
 
@@ -254,6 +263,33 @@ describe("getMemberId", () => {
 		if (result._tag === "Left") {
 			expect((result.left as Error).message).toContain(
 				"Member not found: nonexistent",
+			);
+		}
+	});
+});
+
+describe("resolveCycle", () => {
+	it("finds cycle by id", async () => {
+		const result = await Effect.runPromise(resolveCycle("proj-acme", "cyc-1"));
+		expect(result.id).toBe("cyc-1");
+		expect(result.name).toBe("Sprint 1");
+	});
+
+	it("finds cycle by name (case-insensitive)", async () => {
+		const result = await Effect.runPromise(
+			resolveCycle("proj-acme", "sprint 2"),
+		);
+		expect(result.id).toBe("cyc-2");
+	});
+
+	it("fails when cycle not found", async () => {
+		const result = await Effect.runPromise(
+			Effect.either(resolveCycle("proj-acme", "nonexistent")),
+		);
+		expect(result._tag).toBe("Left");
+		if (result._tag === "Left") {
+			expect((result.left as Error).message).toContain(
+				"Cycle not found: nonexistent",
 			);
 		}
 	});

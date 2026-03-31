@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
 import type { Issue, ProjectDetail } from "./config.js";
 import {
+	CyclesResponseSchema,
 	IssuesResponseSchema,
 	isProjectIntakeEnabled,
 	LabelsResponseSchema,
@@ -263,5 +264,22 @@ export function resolveModule(
 		if (!module)
 			return yield* Effect.fail(new Error(`Module not found: ${nameOrId}`));
 		return { id: module.id, name: module.name };
+	});
+}
+
+export function resolveCycle(
+	projectId: string,
+	nameOrId: string,
+): Effect.Effect<{ id: string; name: string }, Error> {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/cycles/`);
+		const { results } = yield* decodeOrFail(CyclesResponseSchema, raw);
+		const lower = nameOrId.toLowerCase();
+		const cycle = results.find(
+			(c) => c.id === nameOrId || c.name.toLowerCase() === lower,
+		);
+		if (!cycle)
+			return yield* Effect.fail(new Error(`Cycle not found: ${nameOrId}`));
+		return { id: cycle.id, name: cycle.name };
 	});
 }
