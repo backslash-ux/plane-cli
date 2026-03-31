@@ -42,7 +42,7 @@ PLANE_* environment variables > nearest .plane/config.json > ~/.config/plane/con
 
 `plane init --local` also fetches the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands fail with explicit feature-disabled errors when the project has them turned off.
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse current project conventions instead of creating duplicates.
-It also creates or updates `AGENTS.md` in that directory with a managed Plane context section at the bottom so AI agents know to read `.plane/project-context.json` before changing project-specific Plane resources.
+It also creates or updates `AGENTS.md` in that directory with a managed Plane context section at the bottom so AI agents know to read `.plane/project-context.json`, prefer the repo-local `plane` CLI, and clear inherited `PLANE_*` overrides before relying on local project config.
 
 Or set environment variables (override saved config):
 
@@ -98,6 +98,14 @@ plane cycles list PROJ --xml
 plane modules list PROJ --xml
 ```
 
+## Compatibility Notes
+
+- Project-scoped feature availability depends on the target project's Plane feature flags.
+- Some Plane deployments expose pages or worklogs in project settings but still do not provide the backing API routes. In those cases, the CLI returns an explicit compatibility error instead of a raw backend `404`.
+- **Pages**: The CLI targets the project-page API surface. Plane also has a separate workspace wiki page surface that the CLI does not cover. Both may be absent on some deployments even when feature flags are present.
+- **Worklogs**: Time tracking (worklogs) is a Pro-plan feature in Plane. Non-Pro deployments will not expose worklog endpoints.
+- **Missing commands**: `labels delete` and `modules delete` are not yet available in the CLI — use the Plane REST API directly for these operations.
+
 ---
 
 ## Projects
@@ -140,7 +148,7 @@ plane issue get PROJ-29
 plane issue create PROJ "Issue title"
 plane issue create @current "Issue title"
 plane issue create --priority high --state started PROJ "Fix lint pipeline"
-plane issue create --description "Detailed context" PROJ "Add dark mode"
+plane issue create --description '<p>Detailed context</p>' PROJ "Add dark mode"
 plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"
 plane issue create --label "bug" PROJ "Regression in login flow"
 ```
@@ -155,7 +163,7 @@ plane issue create --label "bug" PROJ "Regression in login flow"
 plane issue update --state completed PROJ-29
 plane issue update --priority high WEB-5
 plane issue update --title "New title" PROJ-29
-plane issue update --description "Updated context" PROJ-29
+plane issue update --description '<p>Updated context</p>' PROJ-29
 plane issue update --assignee "Jane Doe" PROJ-29
 plane issue update --no-assignee PROJ-29
 plane issue update --label "enhancement" PROJ-29
@@ -204,6 +212,8 @@ plane issue worklogs add PROJ-29 90                          # 90 minutes
 plane issue worklogs add --description "code review" PROJ-29 30
 ```
 
+Some deployments do not expose worklog endpoints even when time tracking appears enabled. Expect an explicit compatibility error in that case.
+
 ---
 
 ## States
@@ -237,6 +247,8 @@ plane members list
 plane members list --xml
 ```
 
+Members are workspace-scoped. This command does not take a project argument.
+
 ---
 
 ## Cycles (sprints)
@@ -261,7 +273,7 @@ plane modules list PROJ
 plane modules list PROJ --xml
 plane modules issues list PROJ <module-id>
 plane modules issues add PROJ <module-id> PROJ-29
-plane modules issues remove PROJ <module-id> <module-issue-id>  # use join ID, not issue ref
+plane modules issues remove PROJ <module-id> <module-issue-id>  # use the identifier returned by `plane modules issues list`
 ```
 
 ---
@@ -287,9 +299,9 @@ plane pages list PROJ
 plane pages list PROJ --xml
 plane pages get PROJ <page-id>             # full JSON including description_html
 plane pages create --name "My Page" PROJ
-plane pages create --name "My Page" --description "Content here" PROJ
+plane pages create --name "My Page" --description '<p>Content here</p>' PROJ
 plane pages update --name "New Title" PROJ <page-id>
-plane pages update --description "New content" PROJ <page-id>
+plane pages update --description '<p>New content</p>' PROJ <page-id>
 plane pages delete PROJ <page-id>
 plane pages archive PROJ <page-id>
 plane pages unarchive PROJ <page-id>
@@ -297,6 +309,8 @@ plane pages lock PROJ <page-id>
 plane pages unlock PROJ <page-id>
 plane pages duplicate PROJ <page-id>
 ```
+
+Some deployments do not expose page endpoints even when the project advertises page support. Expect an explicit compatibility error in that case.
 
 ---
 
@@ -321,7 +335,7 @@ plane pages duplicate PROJ <page-id>
 
 - No server-side text search — fetch all issues and filter locally.
 - No epics — use labels or modules to group related issues.
-- `description` in `issue create`/`update` is plain text; the CLI wraps it in `<p>` tags automatically.
+- `description` in issue or page create and update flows is passed through to `description_html`; send HTML such as `<p>Details</p>` when you want formatted output.
 - Always fetch state/label/member IDs live — never hardcode UUIDs across workspaces.
 - `plane issue get PROJ-N` is the fastest way to inspect all fields on a single issue.
 

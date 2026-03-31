@@ -15,3 +15,15 @@ Earlier project history may predate this file.
 - Stricter repository quality gates covering formatting, file-size limits, and coverage thresholds.
 - Fork-specific package identity and public metadata alignment under `@backslash-ux/plane`.
 - A versioned root `AGENTS.md` file that provides baseline context for AI coding agents contributing to the repository.
+
+### Changed
+
+- Tightened published CLI documentation so README and SKILL examples match the validated command grammar, identifier semantics, and deployment-compatibility behavior.
+- Updated compatibility notes in README and SKILL to document confirmed page and worklog deployment dependencies.
+
+### Validated
+
+- Full live test sweep completed against a real Plane instance. All core CLI workflows exercised: init (global, local, alias), project resolution, issue CRUD with rich options, comments, links, activity, cycles, modules, intake mutations, states, labels, members, and structured output.
+- Confirmed the CLI's project-page endpoint routes are correct; both page API surfaces (project pages and workspace wiki pages) return 404 on some deployments regardless of feature flags.
+- Confirmed worklogs are a Pro-plan-gated feature; the CLI returns explicit compatibility errors on non-Pro deployments.
+- Identified missing CLI commands for label delete and module delete as follow-up items.

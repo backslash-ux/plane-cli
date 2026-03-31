@@ -59,7 +59,7 @@ environment variables > nearest .plane/config.json > ~/.config/plane/config.json
 The local config is discovered from the current working directory upward, so a config written at the repo root applies inside nested folders unless a deeper `.plane/config.json` overrides it.
 When you run `plane init --local`, the CLI also reads the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands return explicit feature-disabled errors when the project has them turned off.
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse what already exists instead of inventing duplicates.
-If `AGENTS.md` already exists in that directory, `plane init --local` appends a managed Plane project context section at the bottom without removing the existing content. If it does not exist, the CLI creates it and points agents at `.plane/project-context.json`.
+If `AGENTS.md` already exists in that directory, `plane init --local` appends a managed Plane project context section at the bottom without removing the existing content. If it does not exist, the CLI creates it. The managed section points agents at `.plane/project-context.json`, tells them to prefer the repo-local `plane` CLI for Plane work, and includes a small command pattern for clearing inherited `PLANE_*` overrides before using the local config.
 
 You can also use environment variables (override saved config):
 
@@ -82,6 +82,14 @@ plane projects current
 
 When a local config is active in the current path, `plane projects use PROJ` writes there by default; otherwise it writes to global config. Once a current project is saved, list-style commands such as `plane issues list`, `plane cycles list`, `plane modules list`, `plane pages list`, `plane states list`, `plane labels list`, and `plane intake list` can omit the project argument. Other project-scoped commands can use `@current` instead of repeating the identifier.
 
+Project-scoped feature availability still depends on the target Plane project. On deployments where a feature is flagged on but the backing API is unavailable, the CLI returns an explicit compatibility error instead of a raw backend `404`.
+
+**Known deployment dependencies:**
+
+- **Pages**: The CLI targets the project-page API surface (`/projects/{id}/pages/`). Some Plane deployments do not expose page endpoints even when the project feature flag is present. Additionally, Plane has a separate workspace wiki page surface that the CLI does not cover.
+- **Worklogs**: Time tracking is a Pro-plan feature. Non-Pro deployments will return compatibility errors for worklog commands.
+- **Labels delete / Modules delete**: Not yet available as CLI commands. Use the Plane REST API directly for these operations.
+
 ## Common Commands
 
 ```bash
@@ -98,18 +106,18 @@ plane issues list PROJ --state started
 plane issue get PROJ-29
 plane issue create PROJ "Title"
 plane issue create @current "Title"
-plane issue update PROJ-29 --state done --priority high
+plane issue update --state completed --priority high PROJ-29
 plane issue delete PROJ-29
 
 # Comments
 plane issue comments list PROJ-29
-plane issue comments add PROJ-29 "text"
+plane issue comment PROJ-29 "text"
 plane issue comments update PROJ-29 COMMENT_ID "new text"
 plane issue comments delete PROJ-29 COMMENT_ID
 
 # Links
 plane issue link list PROJ-29
-plane issue link add PROJ-29 https://example.com "title"
+plane issue link add --title "title" PROJ-29 https://example.com
 plane issue link remove PROJ-29 LINK_ID
 
 # Activity
@@ -117,8 +125,8 @@ plane issue activity PROJ-29
 
 # Worklogs
 plane issue worklogs list PROJ-29
-plane issue worklogs add PROJ-29 --duration 90
-plane issue worklogs add PROJ-29 --duration 30 --description "standup"
+plane issue worklogs add PROJ-29 90
+plane issue worklogs add --description "standup" PROJ-29 30
 
 # Cycles
 plane cycles list PROJ
@@ -129,7 +137,7 @@ plane cycles issues add PROJ CYCLE_ID PROJ-29
 plane modules list PROJ
 plane modules issues list PROJ MODULE_ID
 plane modules issues add PROJ MODULE_ID PROJ-29
-plane modules issues remove PROJ MODULE_ID PROJ-29
+plane modules issues remove PROJ MODULE_ID MODULE_ISSUE_ID
 
 # Intake
 plane intake list PROJ
@@ -143,7 +151,7 @@ plane pages get PROJ PAGE_ID
 # States, labels, members
 plane states list PROJ
 plane labels list PROJ
-plane members list PROJ
+plane members list
 ```
 
 Project identifiers: short strings like `PROJ`, `WEB`. Issue refs: `PROJ-29`, `WEB-5`.
@@ -163,6 +171,19 @@ plane projects list --json
 plane issues list PROJ --xml
 plane cycles list PROJ --json
 ```
+
+## Command Notes
+
+- `plane issue update` expects flags before the issue ref, for example `plane issue update --state completed PROJ-29`.
+- `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
+- `plane issue link add` accepts an optional link title via `--title`.
+- `plane modules issues remove` expects the module-issue identifier returned by `plane modules issues list`, not an issue ref.
+- `plane members list` is workspace-scoped and does not take a project argument.
+
+## Compatibility Notes
+
+- `plane init --local` reports which project-scoped features are enabled for the selected project.
+- Pages and worklogs can be deployment-dependent even when a feature flag is present. The CLI now returns explicit compatibility errors for unsupported endpoints.
 
 ## Upgrade
 
