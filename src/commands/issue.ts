@@ -429,11 +429,14 @@ export function issueLinkRemoveHandler({
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		yield* requestWithFallback(
-			issueLinkPaths(projectId, issue.id).map((path) => `${path}${linkId}/`),
-			(path) => api.delete(path),
+		// Resolve the correct base path for issue links via a safe probe,
+		// then delete once so a missing link ID results in a proper not-found error.
+		const basePath = yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id),
+			(path) => api.get(path).pipe(Effect.as(path)),
 			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
+		yield* api.delete(`${basePath}${linkId}/`);
 		yield* Console.log(`Link ${linkId} removed from ${ref}`);
 	});
 }

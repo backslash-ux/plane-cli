@@ -325,6 +325,19 @@ export function initHandler(
 			output: process.stdout,
 		});
 
+		let savedHost: string | undefined;
+		let savedWorkspace: string | undefined;
+		let savedToken: string | undefined;
+		let savedDefaultProject = existing.defaultProject;
+		let normalizedHost = "";
+		let mergedWorkspace = "";
+		let mergedToken = "";
+		let projectsResult: import("effect").Either.Either<
+			ReadonlyArray<{ id: string; identifier: string; name: string }>,
+			Error
+		>;
+
+		try {
 		const host = yield* Effect.promise(() =>
 			prompt(
 				rl,
@@ -351,41 +364,38 @@ export function initHandler(
 			),
 		);
 
-		const savedHost =
+		savedHost =
 			scope === "global"
 				? resolveGlobalValue(
 						host,
 						existing.host || effective.host || "https://plane.so",
 					)
 				: resolveLocalValue(host, existing.host);
-		const savedWorkspace =
+		savedWorkspace =
 			scope === "global"
 				? resolveGlobalValue(
 						workspace,
 						existing.workspace || effective.workspace,
 					)
 				: resolveLocalValue(workspace, existing.workspace);
-		const savedToken =
+		savedToken =
 			scope === "global"
 				? resolveGlobalValue(token, existing.token || effective.token)
 				: resolveLocalValue(token, existing.token);
 
 		const mergedHost = savedHost ?? effective.host ?? "https://plane.so";
-		const normalizedHost = normalizeHost(mergedHost);
-		const mergedWorkspace = savedWorkspace ?? effective.workspace;
-		const mergedToken = savedToken ?? effective.token;
+		normalizedHost = normalizeHost(mergedHost);
+		mergedWorkspace = savedWorkspace ?? effective.workspace;
+		mergedToken = savedToken ?? effective.token;
 
 		if (!mergedToken) {
-			rl.close();
 			yield* Effect.fail(new Error("API token is required"));
 		}
 		if (!mergedWorkspace) {
-			rl.close();
 			yield* Effect.fail(new Error("Workspace is required"));
 		}
 
-		let savedDefaultProject = existing.defaultProject;
-		const projectsResult = yield* Effect.either(
+		projectsResult = yield* Effect.either(
 			fetchProjectsForConfig({
 				host: normalizedHost,
 				workspace: mergedWorkspace,
@@ -426,7 +436,9 @@ export function initHandler(
 			);
 		}
 
-		rl.close();
+		} finally {
+			rl.close();
+		}
 
 		if (scope === "global") {
 			writeGlobalStoredConfig({
@@ -447,11 +459,18 @@ export function initHandler(
 			);
 		}
 
+		const hostForDisplay =
+			scope === "global"
+				? normalizedHost
+				: savedHost
+					? normalizeHost(savedHost)
+					: normalizedHost;
+
 		yield* Console.log(
 			`\n${scope === "global" ? "Global" : "Local"} config saved to ${savePath}`,
 		);
 		yield* Console.log(
-			`  Host:      ${describeValue(scope, savedHost, normalizedHost)}`,
+			`  Host:      ${describeValue(scope, savedHost, hostForDisplay)}`,
 		);
 		yield* Console.log(
 			`  Workspace: ${describeValue(scope, savedWorkspace, mergedWorkspace)}`,
@@ -467,13 +486,14 @@ export function initHandler(
 			);
 		}
 
-		if (scope === "local" && savedDefaultProject) {
+		const activeDefaultProject = savedDefaultProject ?? effective.defaultProject;
+		if (scope === "local" && activeDefaultProject) {
 			const selectedProject =
-				projectsResult._tag === "Right"
-					? projectsResult.right.find(
+				projectsResult!._tag === "Right"
+					? projectsResult!.right.find(
 							(project) =>
 								project.identifier.toUpperCase() ===
-								savedDefaultProject.toUpperCase(),
+								activeDefaultProject.toUpperCase(),
 						)
 					: undefined;
 			if (selectedProject) {

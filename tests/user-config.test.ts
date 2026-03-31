@@ -5,6 +5,10 @@ import * as path from "node:path";
 
 const ORIGINAL_HOME = process.env.HOME;
 const ORIGINAL_CWD = process.cwd();
+const ORIGINAL_PLANE_API_TOKEN = process.env.PLANE_API_TOKEN;
+const ORIGINAL_PLANE_HOST = process.env.PLANE_HOST;
+const ORIGINAL_PLANE_WORKSPACE = process.env.PLANE_WORKSPACE;
+const ORIGINAL_PLANE_PROJECT = process.env.PLANE_PROJECT;
 
 let tempHome = "";
 
@@ -19,10 +23,26 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	delete process.env.PLANE_API_TOKEN;
-	delete process.env.PLANE_HOST;
-	delete process.env.PLANE_WORKSPACE;
-	delete process.env.PLANE_PROJECT;
+	if (ORIGINAL_PLANE_API_TOKEN === undefined) {
+		delete process.env.PLANE_API_TOKEN;
+	} else {
+		process.env.PLANE_API_TOKEN = ORIGINAL_PLANE_API_TOKEN;
+	}
+	if (ORIGINAL_PLANE_HOST === undefined) {
+		delete process.env.PLANE_HOST;
+	} else {
+		process.env.PLANE_HOST = ORIGINAL_PLANE_HOST;
+	}
+	if (ORIGINAL_PLANE_WORKSPACE === undefined) {
+		delete process.env.PLANE_WORKSPACE;
+	} else {
+		process.env.PLANE_WORKSPACE = ORIGINAL_PLANE_WORKSPACE;
+	}
+	if (ORIGINAL_PLANE_PROJECT === undefined) {
+		delete process.env.PLANE_PROJECT;
+	} else {
+		process.env.PLANE_PROJECT = ORIGINAL_PLANE_PROJECT;
+	}
 	if (ORIGINAL_HOME === undefined) {
 		delete process.env.HOME;
 	} else {
@@ -74,12 +94,47 @@ describe("user config layering", () => {
 		);
 		expect(config.token).toBe("global-token");
 		expect(config.workspace).toBe("global-workspace");
-		expect(config.host).toBe("https://app.plane.local");
+		// Security: local host is ignored when the token comes from global
+		// to prevent an untrusted repo from redirecting a real token.
+		expect(config.host).toBe("https://global.plane.local");
 		expect(config.defaultProject).toBe("APP");
 		expect(config.sources.token).toBe("global");
-		expect(config.sources.host).toBe("local");
+		expect(config.sources.host).toBe("global");
 		expect(config.sources.workspace).toBe("global");
 		expect(config.sources.defaultProject).toBe("local");
+	});
+
+	it("uses local host when the local config also provides a token", async () => {
+		const {
+			getConfigDetails,
+			writeGlobalStoredConfig,
+			writeLocalStoredConfig,
+		} = await import("@/user-config");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+
+		writeGlobalStoredConfig({
+			token: "global-token",
+			host: "https://global.plane.local",
+			workspace: "global-workspace",
+		});
+		writeLocalStoredConfig(
+			{
+				token: "local-token",
+				host: "https://local.plane.local",
+				workspace: "local-workspace",
+			},
+			{ cwd: repoDir, target: "cwd" },
+		);
+
+		const config = getConfigDetails(repoDir);
+
+		expect(config.token).toBe("local-token");
+		expect(config.host).toBe("https://local.plane.local");
+		expect(config.workspace).toBe("local-workspace");
+		expect(config.sources.token).toBe("local");
+		expect(config.sources.host).toBe("local");
+		expect(config.sources.workspace).toBe("local");
 	});
 
 	it("applies canonical env vars above local and global config", async () => {

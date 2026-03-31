@@ -137,7 +137,7 @@ export function moduleIssuesListHandler({
 			}
 			if ("sequence_id" in mi) {
 				const seq = String(mi.sequence_id).padStart(3, " ");
-				return `${key}-${seq}  ${mi.name}`;
+				return `${key}-${seq}  ${mi.name}  (${mi.id})`;
 			}
 			return `${mi.issue}  (module-issue: ${mi.id})`;
 		});

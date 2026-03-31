@@ -189,14 +189,41 @@ export function getConfigDetails(cwd = process.cwd()): PlaneConfigDetails {
 	const localConfigFile = findNearestLocalConfigFilePath(cwd);
 	const localConfig = localConfigFile ? readConfigFile(localConfigFile) : {};
 
-	const envToken = process.env.PLANE_API_TOKEN;
-	const envHost = process.env.PLANE_HOST;
-	const envWorkspace = process.env.PLANE_WORKSPACE;
-	const envProject = process.env.PLANE_PROJECT;
+	const envToken = process.env.PLANE_API_TOKEN?.trim() || undefined;
+	const envHost = process.env.PLANE_HOST?.trim() || undefined;
+	const envWorkspace = process.env.PLANE_WORKSPACE?.trim() || undefined;
+	const envProject = process.env.PLANE_PROJECT?.trim() || undefined;
+
+	const hostSource: ConfigSource = envHost
+		? "env"
+		: localConfig.host
+			? "local"
+			: globalConfig.host
+				? "global"
+				: "default";
+	const tokenSource: ConfigSource = envToken
+		? "env"
+		: localConfig.token
+			? "local"
+			: globalConfig.token
+				? "global"
+				: "none";
+
+	// Security: if the host comes from local config but the token comes from
+	// global config, an untrusted repo could redirect a real token to an
+	// attacker-controlled host. In that case, fall back to the global host.
+	const safeHostSource =
+		hostSource === "local" && tokenSource === "global" ? "global" : hostSource;
 
 	const token = envToken ?? localConfig.token ?? globalConfig.token ?? "";
 	const host = normalizeHost(
-		envHost ?? localConfig.host ?? globalConfig.host ?? DEFAULT_HOST,
+		safeHostSource === "local"
+			? (localConfig.host ?? globalConfig.host ?? DEFAULT_HOST)
+			: safeHostSource === "env"
+				? (envHost ?? DEFAULT_HOST)
+				: safeHostSource === "global"
+					? (globalConfig.host ?? DEFAULT_HOST)
+					: DEFAULT_HOST,
 	);
 	const workspace =
 		envWorkspace ?? localConfig.workspace ?? globalConfig.workspace ?? "";
@@ -212,20 +239,8 @@ export function getConfigDetails(cwd = process.cwd()): PlaneConfigDetails {
 		workspace,
 		defaultProject,
 		sources: {
-			token: envToken
-				? "env"
-				: localConfig.token
-					? "local"
-					: globalConfig.token
-						? "global"
-						: "none",
-			host: envHost
-				? "env"
-				: localConfig.host
-					? "local"
-					: globalConfig.host
-						? "global"
-						: "default",
+			token: tokenSource,
+			host: safeHostSource,
 			workspace: envWorkspace
 				? "env"
 				: localConfig.workspace

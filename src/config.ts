@@ -90,7 +90,7 @@ export type ProjectDetail = typeof ProjectDetailSchema.Type;
 export function isProjectIntakeEnabled(
 	project: Pick<ProjectDetail, "inbox_view" | "intake_view">,
 ): boolean {
-	return project.inbox_view ?? project.intake_view ?? false;
+	return (project.inbox_view || project.intake_view) ?? false;
 }
 
 export const EstimateSchema = Schema.Struct({

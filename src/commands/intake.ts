@@ -60,7 +60,10 @@ export function intakeListHandler({ project }: { project: string }) {
 			return;
 		}
 		const lines = results.map((i) => {
-			const status = STATUS_LABELS[i.status ?? 0] ?? String(i.status ?? "?");
+			const status =
+				i.status != null
+					? (STATUS_LABELS[i.status] ?? String(i.status))
+					: "unknown";
 			const statusPad = status.padEnd(10);
 			if (i.issue_detail) {
 				return `${i.id}  [${statusPad}]  ${i.issue_detail.name}`;
