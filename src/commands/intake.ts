@@ -13,21 +13,38 @@ const projectArg = Args.text({ name: "project" }).pipe(
 
 const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
-// Intake status codes: -2=rejected, -1=snoozed, 0=pending, 1=accepted, 2=duplicate
+// Intake status codes: -2=pending, -1=rejected, 0=snoozed, 1=accepted, 2=duplicate
 const STATUS_LABELS: Record<number, string> = {
-	[-2]: "rejected",
-	[-1]: "snoozed",
-	0: "pending",
+	[-2]: "pending",
+	[-1]: "rejected",
+	0: "snoozed",
 	1: "accepted",
 	2: "duplicate",
 };
+
+function resolveIntakeMutationId(projectId: string, intakeId: string) {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/intake-issues/`);
+		const { results } = yield* decodeOrFail(IntakeIssuesResponseSchema, raw);
+		const match = results.find(
+			(item) =>
+				item.id === intakeId ||
+				item.issue === intakeId ||
+				item.issue_detail?.id === intakeId,
+		);
+		if (!match) {
+			return yield* Effect.fail(new Error(`Unknown intake issue: ${intakeId}`));
+		}
+		return match.issue ?? match.issue_detail?.id ?? match.id;
+	});
+}
 
 // --- intake list ---
 
 export function intakeListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		yield* requireProjectFeature(id, "inbox_view");
+		yield* requireProjectFeature(id, "intake_view");
 		const raw = yield* api.get(`projects/${id}/intake-issues/`);
 		const { results } = yield* decodeOrFail(IntakeIssuesResponseSchema, raw);
 		if (jsonMode) {
@@ -79,8 +96,9 @@ export function intakeAcceptHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		yield* requireProjectFeature(id, "inbox_view");
-		yield* api.patch(`projects/${id}/intake-issues/${intakeId}/`, {
+		yield* requireProjectFeature(id, "intake_view");
+		const mutationId = yield* resolveIntakeMutationId(id, intakeId);
+		yield* api.patch(`projects/${id}/intake-issues/${mutationId}/`, {
 			status: 1,
 		});
 		yield* Console.log(`Intake issue ${intakeId} accepted`);
@@ -108,9 +126,10 @@ export function intakeRejectHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		yield* requireProjectFeature(id, "inbox_view");
-		yield* api.patch(`projects/${id}/intake-issues/${intakeId}/`, {
-			status: -2,
+		yield* requireProjectFeature(id, "intake_view");
+		const mutationId = yield* resolveIntakeMutationId(id, intakeId);
+		yield* api.patch(`projects/${id}/intake-issues/${mutationId}/`, {
+			status: -1,
 		});
 		yield* Console.log(`Intake issue ${intakeId} rejected`);
 	});

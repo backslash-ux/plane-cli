@@ -26,22 +26,24 @@ const PROJECT_DETAIL = {
 	cycle_view: true,
 	issue_views_view: true,
 	page_view: true,
-	inbox_view: true,
+	intake_view: true,
 };
 const INTAKE_ISSUES = [
 	{
 		id: "int1",
+		issue: "i1",
 		issue_detail: {
 			id: "i1",
 			sequence_id: 5,
 			name: "Bug report",
 			priority: "high",
 		},
-		status: 0,
+		status: -2,
 		created_at: "2025-01-15T10:00:00Z",
 	},
 	{
 		id: "int2",
+		issue: "i2",
 		issue_detail: {
 			id: "i2",
 			sequence_id: 6,
@@ -53,6 +55,7 @@ const INTAKE_ISSUES = [
 	},
 	{
 		id: "int3",
+		issue: "i3",
 		created_at: "2025-01-13T10:00:00Z",
 	},
 ];
@@ -144,7 +147,7 @@ describe("intakeAccept", () => {
 		let patchedBody: unknown;
 		server.use(
 			http.patch(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/i1/`,
 				async ({ request }) => {
 					patchedBody = await request.json();
 					return HttpResponse.json({
@@ -176,12 +179,12 @@ describe("intakeReject", () => {
 		let patchedBody: unknown;
 		server.use(
 			http.patch(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/i1/`,
 				async ({ request }) => {
 					patchedBody = await request.json();
 					return HttpResponse.json({
 						id: "int1",
-						status: -2,
+						status: -1,
 						created_at: "2025-01-15T10:00:00Z",
 					});
 				},
@@ -198,7 +201,7 @@ describe("intakeReject", () => {
 		} finally {
 			console.log = orig;
 		}
-		expect((patchedBody as { status?: number }).status).toBe(-2);
+		expect((patchedBody as { status?: number }).status).toBe(-1);
 		expect(logs.join("\n")).toContain("rejected");
 	});
 });

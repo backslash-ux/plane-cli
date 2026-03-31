@@ -3,6 +3,7 @@ import { api, decodeOrFail } from "./api.js";
 import type { Issue, ProjectDetail } from "./config.js";
 import {
 	IssuesResponseSchema,
+	isProjectIntakeEnabled,
 	LabelsResponseSchema,
 	MembersResponseSchema,
 	ProjectDetailSchema,
@@ -19,21 +20,31 @@ type ProjectFeatureKey =
 	| "cycle_view"
 	| "module_view"
 	| "page_view"
-	| "inbox_view";
+	| "intake_view";
 
 const FEATURE_LABELS: Record<ProjectFeatureKey, string> = {
 	cycle_view: "Cycles",
 	module_view: "Modules",
 	page_view: "Pages",
-	inbox_view: "Intake",
+	intake_view: "Intake",
 };
 
 const FEATURE_HINTS: Record<ProjectFeatureKey, string> = {
 	cycle_view: "Enable Cycles in the Plane project settings.",
 	module_view: "Enable Modules in the Plane project settings.",
 	page_view: "Enable Pages in the Plane project settings.",
-	inbox_view: "Enable Intake in the Plane project settings.",
+	intake_view: "Enable Intake in the Plane project settings.",
 };
+
+function isProjectFeatureEnabled(
+	project: ProjectDetail,
+	feature: ProjectFeatureKey,
+): boolean {
+	if (feature === "intake_view") {
+		return isProjectIntakeEnabled(project);
+	}
+	return project[feature];
+}
 
 function getConfiguredProject(identifier: string): string {
 	const trimmed = identifier.trim();
@@ -96,7 +107,7 @@ export function getProjectFeatureDetails(projectId: string) {
 				Modules: project.module_view,
 				Views: project.issue_views_view,
 				Pages: project.page_view,
-				Intake: project.inbox_view,
+				Intake: isProjectIntakeEnabled(project),
 			},
 		})),
 	);
@@ -108,13 +119,14 @@ export function requireProjectFeature(
 ): Effect.Effect<void, Error> {
 	return getProjectDetail(projectId).pipe(
 		Effect.flatMap((project) => {
-			if (project[feature]) {
+			if (isProjectFeatureEnabled(project, feature)) {
 				return Effect.succeed(void 0);
 			}
 			const featureLabel = FEATURE_LABELS[feature];
+			const featureFlag = feature === "intake_view" ? "intake_view" : feature;
 			return Effect.fail(
 				new Error(
-					`Project ${project.identifier} has ${featureLabel} disabled (${feature}=false). ${FEATURE_HINTS[feature]}`,
+					`Project ${project.identifier} has ${featureLabel} disabled (${featureFlag}=false). ${FEATURE_HINTS[feature]}`,
 				),
 			);
 		}),

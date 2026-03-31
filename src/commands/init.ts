@@ -5,6 +5,7 @@ import { decodeOrFail } from "../api.js";
 import {
 	EstimatePointsResponseSchema,
 	EstimateSchema,
+	isProjectIntakeEnabled,
 	LabelsResponseSchema,
 	ProjectDetailSchema,
 	ProjectsResponseSchema,
@@ -24,6 +25,7 @@ import {
 	getConfigDetails,
 	getGlobalConfigFilePath,
 	getLocalConfigFilePath,
+	normalizeHost,
 	readGlobalStoredConfig,
 	readLocalStoredConfigAtPath,
 	writeGlobalStoredConfig,
@@ -292,14 +294,15 @@ function summarizeProjectFeatures(project: {
 	module_view: boolean;
 	issue_views_view: boolean;
 	page_view: boolean;
-	inbox_view: boolean;
+	inbox_view?: boolean;
+	intake_view?: boolean;
 }): ProjectFeatureSummary[] {
 	return [
 		{ label: "Cycles", enabled: project.cycle_view },
 		{ label: "Modules", enabled: project.module_view },
 		{ label: "Views", enabled: project.issue_views_view },
 		{ label: "Pages", enabled: project.page_view },
-		{ label: "Intake", enabled: project.inbox_view },
+		{ label: "Intake", enabled: isProjectIntakeEnabled(project) },
 	];
 }
 
@@ -367,11 +370,8 @@ export function initHandler(
 				? resolveGlobalValue(token, existing.token || effective.token)
 				: resolveLocalValue(token, existing.token);
 
-		const mergedHost = (
-			savedHost ??
-			effective.host ??
-			"https://plane.so"
-		).replace(/\/$/, "");
+		const mergedHost = savedHost ?? effective.host ?? "https://plane.so";
+		const normalizedHost = normalizeHost(mergedHost);
 		const mergedWorkspace = savedWorkspace ?? effective.workspace;
 		const mergedToken = savedToken ?? effective.token;
 
@@ -387,7 +387,7 @@ export function initHandler(
 		let savedDefaultProject = existing.defaultProject;
 		const projectsResult = yield* Effect.either(
 			fetchProjectsForConfig({
-				host: mergedHost,
+				host: normalizedHost,
 				workspace: mergedWorkspace,
 				token: mergedToken,
 			}),
@@ -430,7 +430,7 @@ export function initHandler(
 
 		if (scope === "global") {
 			writeGlobalStoredConfig({
-				host: mergedHost,
+				host: normalizedHost,
 				workspace: mergedWorkspace,
 				token: mergedToken,
 				defaultProject: savedDefaultProject,
@@ -451,7 +451,7 @@ export function initHandler(
 			`\n${scope === "global" ? "Global" : "Local"} config saved to ${savePath}`,
 		);
 		yield* Console.log(
-			`  Host:      ${describeValue(scope, savedHost, mergedHost)}`,
+			`  Host:      ${describeValue(scope, savedHost, normalizedHost)}`,
 		);
 		yield* Console.log(
 			`  Workspace: ${describeValue(scope, savedWorkspace, mergedWorkspace)}`,
@@ -480,7 +480,7 @@ export function initHandler(
 				const projectHelper = yield* Effect.either(
 					fetchLocalProjectHelperForConfig(
 						{
-							host: mergedHost,
+							host: normalizedHost,
 							workspace: mergedWorkspace,
 							token: mergedToken,
 						},

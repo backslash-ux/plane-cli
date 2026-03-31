@@ -7,6 +7,7 @@ import type {
 	ProjectDetail,
 	State,
 } from "./config.js";
+import { isProjectIntakeEnabled } from "./config.js";
 import { getLocalConfigDir } from "./user-config.js";
 
 interface ProjectSummary {
@@ -133,7 +134,7 @@ export function buildProjectContextSnapshot({
 			modules: detail.module_view,
 			views: detail.issue_views_view,
 			pages: detail.page_view,
-			intake: detail.inbox_view,
+			intake: isProjectIntakeEnabled(detail),
 			estimates: estimate !== null,
 		},
 		helpers: {
