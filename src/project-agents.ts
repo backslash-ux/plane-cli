@@ -149,5 +149,7 @@ export function hasSkillSectionInAgentsFile(cwd = process.cwd()): boolean {
 	const filePath = getLocalAgentsFilePath(cwd);
 	if (!fs.existsSync(filePath)) return false;
 	const content = fs.readFileSync(filePath, "utf8");
-	return content.includes(SKILL_SECTION_START);
+	return (
+		content.includes(SKILL_SECTION_START) && content.includes(SKILL_SECTION_END)
+	);
 }
