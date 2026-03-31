@@ -88,7 +88,6 @@ Project-scoped feature availability still depends on the target Plane project. O
 
 - **Pages**: The CLI targets the project-page API surface (`/projects/{id}/pages/`). Some Plane deployments do not expose page endpoints even when the project feature flag is present. Additionally, Plane has a separate workspace wiki page surface that the CLI does not cover.
 - **Worklogs**: Time tracking is a Pro-plan feature. Non-Pro deployments will return compatibility errors for worklog commands.
-- **Labels delete / Modules delete**: Not yet available as CLI commands. Use the Plane REST API directly for these operations.
 
 ## Common Commands
 
@@ -135,6 +134,7 @@ plane cycles issues add PROJ CYCLE_ID PROJ-29
 
 # Modules
 plane modules list PROJ
+plane modules delete PROJ MODULE_ID
 plane modules issues list PROJ MODULE_ID
 plane modules issues add PROJ MODULE_ID PROJ-29
 plane modules issues remove PROJ MODULE_ID MODULE_ISSUE_ID
@@ -151,6 +151,7 @@ plane pages get PROJ PAGE_ID
 # States, labels, members
 plane states list PROJ
 plane labels list PROJ
+plane labels delete PROJ bug
 plane members list
 ```
 
@@ -177,6 +178,8 @@ plane cycles list PROJ --json
 - `plane issue update` expects flags before the issue ref, for example `plane issue update --state completed PROJ-29`.
 - `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
 - `plane issue link add` accepts an optional link title via `--title`.
+- `plane labels delete` accepts either the label UUID or the exact label name returned by `plane labels list`.
+- `plane modules delete` accepts either the module UUID or the exact module name returned by `plane modules list`.
 - `plane modules issues remove` expects the module-issue identifier returned by `plane modules issues list`, not an issue ref.
 - `plane members list` is workspace-scoped and does not take a project argument.
 

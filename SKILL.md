@@ -104,7 +104,6 @@ plane modules list PROJ --xml
 - Some Plane deployments expose pages or worklogs in project settings but still do not provide the backing API routes. In those cases, the CLI returns an explicit compatibility error instead of a raw backend `404`.
 - **Pages**: The CLI targets the project-page API surface. Plane also has a separate workspace wiki page surface that the CLI does not cover. Both may be absent on some deployments even when feature flags are present.
 - **Worklogs**: Time tracking (worklogs) is a Pro-plan feature in Plane. Non-Pro deployments will not expose worklog endpoints.
-- **Missing commands**: `labels delete` and `modules delete` are not yet available in the CLI — use the Plane REST API directly for these operations.
 
 ---
 
@@ -236,6 +235,7 @@ plane labels list PROJ
 plane labels list PROJ --xml
 plane labels create PROJ "bug"
 plane labels create --color "#ff0000" PROJ "critical"
+plane labels delete PROJ bug
 ```
 
 ---
@@ -271,6 +271,7 @@ Cycle IDs are UUIDs. Fetch them from `plane cycles list PROJ`.
 plane modules list
 plane modules list PROJ
 plane modules list PROJ --xml
+plane modules delete PROJ <module-id>
 plane modules issues list PROJ <module-id>
 plane modules issues add PROJ <module-id> PROJ-29
 plane modules issues remove PROJ <module-id> <module-issue-id>  # use the identifier returned by `plane modules issues list`

@@ -60,7 +60,6 @@ The CLI has been validated against a real Plane instance. Be aware of these depl
 - **Pages**: The CLI targets the project-page API surface. Plane also has a separate workspace wiki page surface that the CLI does not cover. Both may return 404 on some deployments even when the project feature flag is enabled.
 - **Worklogs**: Time tracking is a Pro-plan feature. Non-Pro deployments will not expose worklog API endpoints.
 - **Feature gating**: The CLI returns explicit compatibility errors (not raw 404s) when a project feature is flagged on but the backing API route is absent.
-- **Missing CLI commands**: `labels delete` and `modules delete` are not yet implemented. Use the Plane REST API directly for these operations.
 
 <!-- plane-cli local project context start -->
 ## Plane Project Context
