@@ -8,7 +8,8 @@ Earlier project history may predate this file.
 
 ## [Unreleased]
 ### Added   
-- `plane modules create` with optional description, status, schedule, and lead resolution. 
+- `plane modules create` with optional description, status, schedule, and lead resolution.
+- `plane init --local` now prompts whether to import the SKILL.md CLI usage guide into AGENTS.md. First-time prompt defaults to `N`; subsequent runs (section already present) default to `Y`. The skill section is wrapped in idempotent HTML comment markers so repeated runs update it in place.
 
 ### Changed
 - **Consistent project defaulting for create commands.** `issue create`, `modules create`, `labels create`, and `pages create` now use `--title`/`--name` options instead of positional args, so the project positional can be omitted to use the saved current project.
