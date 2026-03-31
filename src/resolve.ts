@@ -6,6 +6,7 @@ import {
 	isProjectIntakeEnabled,
 	LabelsResponseSchema,
 	MembersResponseSchema,
+	ModulesResponseSchema,
 	ProjectDetailSchema,
 	ProjectsResponseSchema,
 	StatesResponseSchema,
@@ -228,13 +229,39 @@ export function getLabelId(
 	projectId: string,
 	name: string,
 ): Effect.Effect<string, Error> {
+	return resolveLabel(projectId, name).pipe(Effect.map((label) => label.id));
+}
+
+export function resolveLabel(
+	projectId: string,
+	nameOrId: string,
+): Effect.Effect<{ id: string; name: string }, Error> {
 	return Effect.gen(function* () {
 		const raw = yield* api.get(`projects/${projectId}/labels/`);
 		const { results } = yield* decodeOrFail(LabelsResponseSchema, raw);
-		const lower = name.toLowerCase();
-		const label = results.find((l) => l.name.toLowerCase() === lower);
+		const lower = nameOrId.toLowerCase();
+		const label = results.find(
+			(l) => l.id === nameOrId || l.name.toLowerCase() === lower,
+		);
 		if (!label)
-			return yield* Effect.fail(new Error(`Label not found: ${name}`));
-		return label.id;
+			return yield* Effect.fail(new Error(`Label not found: ${nameOrId}`));
+		return { id: label.id, name: label.name };
+	});
+}
+
+export function resolveModule(
+	projectId: string,
+	nameOrId: string,
+): Effect.Effect<{ id: string; name: string }, Error> {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/modules/`);
+		const { results } = yield* decodeOrFail(ModulesResponseSchema, raw);
+		const lower = nameOrId.toLowerCase();
+		const module = results.find(
+			(m) => m.id === nameOrId || m.name.toLowerCase() === lower,
+		);
+		if (!module)
+			return yield* Effect.fail(new Error(`Module not found: ${nameOrId}`));
+		return { id: module.id, name: module.name };
 	});
 }

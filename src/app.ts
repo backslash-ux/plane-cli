@@ -55,11 +55,11 @@ ALL SUBCOMMANDS
   issue               get | create | update | delete | comment | activity |
                       link | comments | worklogs
   cycles              list | issues (list, add)
-  modules             list | issues (list, add, remove)
+  modules             list | delete | issues (list, add, remove)
   intake              list | accept | reject
   pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
   states list         List workflow states for a project
-  labels list         List labels for a project
+  labels              list | create | delete
   members list        List workspace members
 
 FOR AI AGENTS / BOTS

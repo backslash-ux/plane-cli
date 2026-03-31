@@ -10,6 +10,7 @@ import {
 	findIssueBySeq,
 	parseIssueRef,
 	requireProjectFeature,
+	resolveModule,
 	resolveProject,
 } from "../resolve.js";
 
@@ -23,6 +24,11 @@ const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const moduleIdArg = Args.text({ name: "module-id" }).pipe(
 	Args.withDescription("Module UUID (from 'plane modules list PROJECT')"),
+);
+const moduleArg = Args.text({ name: "module" }).pipe(
+	Args.withDescription(
+		"Module UUID or exact name (from 'plane modules list PROJECT')",
+	),
 );
 
 // --- modules list ---
@@ -60,6 +66,39 @@ export const modulesList = Command.make(
 ).pipe(
 	Command.withDescription(
 		"List modules for a project. Shows module UUID, status, and name. Omit PROJECT to use the saved current project.\n\nExample:\n  plane modules list PROJ",
+	),
+);
+
+// --- modules delete ---
+
+export function modulesDeleteHandler({
+	project,
+	module,
+}: {
+	project: string;
+	module: string;
+}) {
+	return Effect.gen(function* () {
+		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "module_view");
+		const resolvedModule = yield* resolveModule(id, module);
+		yield* api.delete(`projects/${id}/modules/${resolvedModule.id}/`);
+		yield* Console.log(
+			`Deleted module: ${resolvedModule.name} (${resolvedModule.id})`,
+		);
+	});
+}
+
+export const modulesDelete = Command.make(
+	"delete",
+	{ project: projectArg, module: moduleArg },
+	modulesDeleteHandler,
+).pipe(
+	Command.withDescription(
+		`Delete a module by UUID or exact name.
+
+Example:
+  plane modules delete PROJ <module-id>`,
 	),
 );
 
@@ -216,7 +255,7 @@ export const moduleIssues = Command.make("issues").pipe(
 
 export const modules = Command.make("modules").pipe(
 	Command.withDescription(
-		"Manage modules (groups of related issues). Subcommands: list, issues\n\nExamples:\n  plane modules list PROJ\n  plane modules issues list PROJ <module-id>\n  plane modules issues add PROJ <module-id> PROJ-29",
+		"Manage modules (groups of related issues). Subcommands: list, delete, issues\n\nExamples:\n  plane modules list PROJ\n  plane modules delete PROJ <module-id>\n  plane modules issues list PROJ <module-id>\n  plane modules issues add PROJ <module-id> PROJ-29",
 	),
-	Command.withSubcommands([modulesList, moduleIssues]),
+	Command.withSubcommands([modulesList, modulesDelete, moduleIssues]),
 );

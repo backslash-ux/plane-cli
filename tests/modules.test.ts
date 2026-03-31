@@ -154,6 +154,72 @@ describe("modulesList", () => {
 	});
 });
 
+describe("modulesDelete", () => {
+	it("deletes a module by UUID", async () => {
+		let deleted = false;
+		server.use(
+			http.delete(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/`,
+				() => {
+					deleted = true;
+					return new HttpResponse(null, { status: 204 });
+				},
+			),
+		);
+
+		const { modulesDeleteHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				modulesDeleteHandler({
+					project: "ACME",
+					module: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(deleted).toBe(true);
+		expect(logs.join("\n")).toContain("Deleted module: Sprint 1 (mod1)");
+	});
+
+	it("deletes a module by exact name", async () => {
+		let deleted = false;
+		server.use(
+			http.delete(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod2/`,
+				() => {
+					deleted = true;
+					return new HttpResponse(null, { status: 204 });
+				},
+			),
+		);
+
+		const { modulesDeleteHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				modulesDeleteHandler({
+					project: "ACME",
+					module: "Sprint 2",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(deleted).toBe(true);
+		expect(logs.join("\n")).toContain("Deleted module: Sprint 2 (mod2)");
+	});
+});
+
 describe("moduleIssuesList", () => {
 	it("lists issues in a module with detail", async () => {
 		const { moduleIssuesListHandler } = await import("@/commands/modules");
