@@ -36,8 +36,9 @@ QUICK START
   plane issues list                   List issues for the saved current project
   plane issues list PROJ              List issues for a project
   plane issue get PROJ-29             Get full JSON for an issue
-  plane issue create PROJ "title"     Create an issue
-  plane issue create @current "title" Create an issue in the saved current project
+  plane issue create --title "title"  Create an issue in the saved current project
+  plane issue create --title "title" PROJ
+  plane modules create --name "Sprint 3"
   plane issue update --state done PROJ-29
   plane issue comment PROJ-29 "text"  Add a comment
 
@@ -55,7 +56,7 @@ ALL SUBCOMMANDS
   issue               get | create | update | delete | comment | activity |
                       link | comments | worklogs
   cycles              list | issues (list, add)
-  modules             list | delete | issues (list, add, remove)
+  modules             list | create | delete | issues (list, add, remove)
   intake              list | accept | reject
   pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
   states list         List workflow states for a project
@@ -94,5 +95,5 @@ FOR AI AGENTS / BOTS
 
 export const cli = Command.run(plane, {
 	name: "plane",
-	version: "1.0.0",
+	version: "1.1.0",
 });

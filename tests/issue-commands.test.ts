@@ -1064,8 +1064,9 @@ describe("--description argv parsing", () => {
 			"create",
 			"--description",
 			"Hello world",
-			"ACME",
+			"--title",
 			"Argv test issue",
+			"ACME",
 		]);
 		expect(logs.join("\n")).toContain("Created");
 		expect((postedBody as { description_html?: string }).description_html).toBe(
@@ -1096,8 +1097,9 @@ describe("--description argv parsing", () => {
 			"create",
 			"--description",
 			"<p>Raw HTML</p>",
-			"ACME",
+			"--title",
 			"HTML test",
+			"ACME",
 		]);
 		expect((postedBody as { description_html?: string }).description_html).toBe(
 			"<p>Raw HTML</p>",

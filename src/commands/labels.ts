@@ -1,5 +1,5 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Console, Effect } from "effect";
+import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { LabelSchema, LabelsResponseSchema } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
@@ -47,8 +47,8 @@ export const labelsList = Command.make(
 
 // --- labels create ---
 
-const nameArg = Args.text({ name: "name" }).pipe(
-	Args.withDescription("Label name"),
+const createNameOption = Options.text("name").pipe(
+	Options.withDescription("Label name"),
 );
 const colorOption = Options.optional(Options.text("color")).pipe(
 	Options.withDescription("Hex color e.g. #ff0000"),
@@ -61,8 +61,12 @@ const labelArg = Args.text({ name: "label" }).pipe(
 
 export const labelsCreate = Command.make(
 	"create",
-	{ color: colorOption, project: projectArg, name: nameArg },
+	{ color: colorOption, project: listProjectArg, name: createNameOption },
 	labelsCreateHandler,
+).pipe(
+	Command.withDescription(
+		'Create a new label in a project. Omit PROJECT to use the saved current project.\n\nExamples:\n  plane labels create --name bug\n  plane labels create --name bug --color "#ff0000" PROJ',
+	),
 );
 
 export function labelsCreateHandler({
@@ -72,7 +76,7 @@ export function labelsCreateHandler({
 }: {
 	project: string;
 	name: string;
-	color: { _tag: "Some"; value: string } | { _tag: "None" };
+	color: Option.Option<string>;
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
@@ -81,7 +85,7 @@ export function labelsCreateHandler({
 			color?: string;
 		}
 		const body: LabelPayload = { name };
-		if (color._tag === "Some") body.color = color.value;
+		if (Option.isSome(color)) body.color = color.value;
 		const raw = yield* api.post(`projects/${id}/labels/`, body);
 		const label = yield* decodeOrFail(LabelSchema, raw);
 		yield* Console.log(`Created label: ${label.name} (${label.id})`);

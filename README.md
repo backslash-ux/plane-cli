@@ -1,6 +1,6 @@
 # plane
 
-[![CI](https://github.com/backslash-ux/plane-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/backslash-ux/plane-cli-cli/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/backslash-ux/plane-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/backslash-ux/plane-cli/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 CLI for the [Plane](https://plane.so) project management API.
 
@@ -103,8 +103,8 @@ plane issues list
 plane issues list PROJ
 plane issues list PROJ --state started
 plane issue get PROJ-29
-plane issue create PROJ "Title"
-plane issue create @current "Title"
+plane issue create --title "Title"
+plane issue create --title "Title" PROJ
 plane issue update --state completed --priority high PROJ-29
 plane issue delete PROJ-29
 
@@ -134,6 +134,7 @@ plane cycles issues add PROJ CYCLE_ID PROJ-29
 
 # Modules
 plane modules list PROJ
+plane modules create --name "Sprint 3"
 plane modules delete PROJ MODULE_ID
 plane modules issues list PROJ MODULE_ID
 plane modules issues add PROJ MODULE_ID PROJ-29
@@ -179,6 +180,8 @@ plane cycles list PROJ --json
 - `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
 - `plane issue link add` accepts an optional link title via `--title`.
 - `plane labels delete` accepts either the label UUID or the exact label name returned by `plane labels list`.
+- `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
+- `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.
 - `plane modules delete` accepts either the module UUID or the exact module name returned by `plane modules list`.
 - `plane modules issues remove` expects the module-issue identifier returned by `plane modules issues list`, not an issue ref.
 - `plane members list` is workspace-scoped and does not take a project argument.
@@ -197,7 +200,7 @@ bun update -g @backslash-ux/plane-cli
 ## Development
 
 ```bash
-git clone https://github.com/backslash-ux/plane-cli-cli
+git clone https://github.com/backslash-ux/plane-cli
 cd plane-cli
 bun install
 

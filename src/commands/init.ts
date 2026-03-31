@@ -13,6 +13,9 @@ import {
 } from "../config.js";
 import {
 	getLocalAgentsFilePath,
+	hasSkillSectionInAgentsFile,
+	importSkillIntoAgentsFile,
+	readPackageSkillContent,
 	writeLocalProjectAgentsFile,
 } from "../project-agents.js";
 import {
@@ -545,6 +548,34 @@ export function initHandler(
 						yield* Console.log("  Estimate:  disabled");
 					}
 					yield* Console.log(`Local AGENTS.md updated at ${agentsPath}`);
+
+					const skillContent = readPackageSkillContent();
+					if (skillContent) {
+						const alreadyHasSkill = hasSkillSectionInAgentsFile();
+						const skillPromptText = alreadyHasSkill
+							? "Update SKILL.md (CLI usage guide) in AGENTS.md? [Y/n]: "
+							: "Import SKILL.md (CLI usage guide) into AGENTS.md? [y/N]: ";
+						const skillRl = readline.createInterface({
+							input: process.stdin,
+							output: process.stdout,
+						});
+						let skillAnswer: string;
+						try {
+							skillAnswer = yield* Effect.promise(() =>
+								prompt(skillRl, skillPromptText),
+							);
+						} finally {
+							skillRl.close();
+						}
+						const trimmed = skillAnswer.trim().toLowerCase();
+						const shouldImport = alreadyHasSkill
+							? trimmed !== "n" && trimmed !== "no"
+							: trimmed === "y" || trimmed === "yes";
+						if (shouldImport) {
+							importSkillIntoAgentsFile(skillContent);
+							yield* Console.log("  SKILL.md imported into AGENTS.md");
+						}
+					}
 				} else {
 					yield* Console.log(
 						`\nWarning: could not load project helper data for ${selectedProject.identifier}: ${projectHelper.left.message}`,
@@ -569,6 +600,6 @@ export const localInit = Command.make("init", {}, () =>
 	initHandler({ global: false, local: true }, "local"),
 ).pipe(
 	Command.withDescription(
-		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, and updates AGENTS.md with project-context guidance for AI agents.",
+		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, updates AGENTS.md with project-context guidance for AI agents, and optionally imports the SKILL.md CLI usage guide into AGENTS.md.",
 	),
 );

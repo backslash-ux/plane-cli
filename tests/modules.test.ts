@@ -7,7 +7,9 @@ import {
 	expect,
 	it,
 } from "bun:test";
-import { Effect } from "effect";
+import { Command } from "@effect/cli";
+import { NodeContext } from "@effect/platform-node";
+import { Effect, Option } from "effect";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
@@ -41,6 +43,9 @@ const MODULES = [
 	{ id: "mod1", name: "Sprint 1", status: "in_progress" },
 	{ id: "mod2", name: "Sprint 2", status: "backlog" },
 ];
+const MEMBERS = [
+	{ id: "mem1", display_name: "Jane Doe", email: "jane@example.com" },
+];
 const MODULE_ISSUES = [
 	{
 		id: "i1",
@@ -58,6 +63,9 @@ const server = setupServer(
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
 		HttpResponse.json({ results: ISSUES }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
+		HttpResponse.json(MEMBERS),
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`, () =>
 		HttpResponse.json({ results: MODULES }),
@@ -83,7 +91,31 @@ afterEach(() => {
 	delete process.env.PLANE_HOST;
 	delete process.env.PLANE_WORKSPACE;
 	delete process.env.PLANE_API_TOKEN;
+	delete process.env.PLANE_PROJECT;
 });
+
+async function runModulesCli(argv: string[]): Promise<{ logs: string[] }> {
+	const { modules } = await import("@/commands/modules");
+
+	const root = Command.make("plane").pipe(Command.withSubcommands([modules]));
+	const cli = Command.run(root, { name: "plane", version: "0.0.0" });
+
+	const logs: string[] = [];
+	const orig = console.log;
+	console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+	try {
+		await Effect.runPromise(
+			cli(["_", "_", ...argv]).pipe(Effect.provide(NodeContext.layer)),
+		);
+	} catch (error) {
+		logs.push(`ERROR: ${String(error)}`);
+	} finally {
+		console.log = orig;
+	}
+
+	return { logs };
+}
 
 describe("modulesList", () => {
 	it("lists modules for a project", async () => {
@@ -151,6 +183,177 @@ describe("modulesList", () => {
 		}
 
 		expect(logs.join("\n")).toContain("?");
+	});
+});
+
+describe("modulesCreate", () => {
+	it("parses the public CLI entrypoint and maps create flags to the API payload", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json(
+						{
+							id: "mod-cli",
+							name: "Design System Rollout",
+							status: "in-progress",
+							description: "Ship tokens and docs",
+						},
+						{ status: 201 },
+					);
+				},
+			),
+		);
+
+		const { logs } = await runModulesCli([
+			"modules",
+			"create",
+			"--name",
+			"Design System Rollout",
+			"--description",
+			"Ship tokens and docs",
+			"--status",
+			"in_progress",
+			"--start-date",
+			"2026-04-01",
+			"--target-date",
+			"2026-04-30",
+			"--lead",
+			"Jane Doe",
+			"ACME",
+		]);
+
+		expect(postedBody).toEqual({
+			name: "Design System Rollout",
+			description: "Ship tokens and docs",
+			status: "in-progress",
+			start_date: "2026-04-01",
+			target_date: "2026-04-30",
+			lead: "mem1",
+		});
+		expect(logs.join("\n")).toContain(
+			"Created module: Design System Rollout (mod-cli)",
+		);
+	});
+
+	it("creates a module with only a name", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json(
+						{
+							id: "mod3",
+							name: "Sprint 3",
+							status: "planned",
+							identifier: "ACME",
+							created_at: "2026-03-31T00:00:00Z",
+						},
+						{ status: 201 },
+					);
+				},
+			),
+		);
+
+		const { modulesCreateHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				modulesCreateHandler({
+					project: "ACME",
+					name: "Sprint 3",
+					description: Option.none(),
+					status: Option.none(),
+					startDate: Option.none(),
+					targetDate: Option.none(),
+					lead: Option.none(),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(postedBody).toEqual({ name: "Sprint 3" });
+		expect(logs.join("\n")).toContain("Created module: Sprint 3 (mod3)");
+	});
+
+	it("creates a module with optional fields and resolves the lead", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json(
+						{
+							id: "mod4",
+							name: "Design System Rollout",
+							status: "in-progress",
+							description: "Ship tokens and docs",
+						},
+						{ status: 201 },
+					);
+				},
+			),
+		);
+
+		const { modulesCreateHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				modulesCreateHandler({
+					project: "ACME",
+					name: "Design System Rollout",
+					description: Option.some("Ship tokens and docs"),
+					status: Option.some("in_progress"),
+					startDate: Option.some("2026-04-01"),
+					targetDate: Option.some("2026-04-30"),
+					lead: Option.some("Jane Doe"),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(postedBody).toEqual({
+			name: "Design System Rollout",
+			description: "Ship tokens and docs",
+			status: "in-progress",
+			start_date: "2026-04-01",
+			target_date: "2026-04-30",
+			lead: "mem1",
+		});
+		expect(logs.join("\n")).toContain(
+			"Created module: Design System Rollout (mod4)",
+		);
+	});
+
+	it("fails fast on invalid create dates before calling the API", async () => {
+		const { modulesCreateHandler } = await import("@/commands/modules");
+
+		await expect(
+			Effect.runPromise(
+				modulesCreateHandler({
+					project: "ACME",
+					name: "Bad Dates",
+					description: Option.none(),
+					status: Option.none(),
+					startDate: Option.some("2026-02-31"),
+					targetDate: Option.none(),
+					lead: Option.none(),
+				}),
+			),
+		).rejects.toThrow("--start-date must be a valid date in YYYY-MM-DD format");
 	});
 });
 

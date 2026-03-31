@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security policy
-    url: https://github.com/backslash-ux/plane-cli-cli/blob/main/SECURITY.md
+    url: https://github.com/backslash-ux/plane-cli/blob/main/SECURITY.md
     about: Report suspected vulnerabilities privately instead of opening a public issue.
   - name: Contributing guide
-    url: https://github.com/backslash-ux/plane-cli-cli/blob/main/CONTRIBUTING.md
+    url: https://github.com/backslash-ux/plane-cli/blob/main/CONTRIBUTING.md
     about: Review contribution expectations, quality gates, and documentation requirements first.
   - name: Existing issues
-    url: https://github.com/backslash-ux/plane-cli-cli/issues
+    url: https://github.com/backslash-ux/plane-cli/issues
     about: Check open issues and feature requests before filing a new one.

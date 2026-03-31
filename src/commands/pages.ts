@@ -154,11 +154,11 @@ export function pagesCreateHandler({
 
 export const pagesCreate = Command.make(
 	"create",
-	{ project: projectArg, name: nameOption, description: descriptionOption },
+	{ project: listProjectArg, name: nameOption, description: descriptionOption },
 	pagesCreateHandler,
 ).pipe(
 	Command.withDescription(
-		'Create a new page.\n\nExample:\n  plane pages create --name "My Page" PROJ',
+		'Create a new page. Omit PROJECT to use the saved current project.\n\nExamples:\n  plane pages create --name "My Page"\n  plane pages create --name "My Page" PROJ',
 	),
 );
 

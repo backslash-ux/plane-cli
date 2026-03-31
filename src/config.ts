@@ -159,6 +159,10 @@ export const ModuleSchema = Schema.Struct({
 	name: Schema.String,
 	status: Schema.optional(Schema.String),
 	description: Schema.optional(Schema.NullOr(Schema.String)),
+	identifier: Schema.optional(Schema.String),
+	created_at: Schema.optional(Schema.String),
+	start_date: Schema.optional(Schema.NullOr(Schema.String)),
+	target_date: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type Module = typeof ModuleSchema.Type;
 

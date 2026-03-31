@@ -204,13 +204,14 @@ export const issueComment = Command.make(
 	),
 );
 // --- issue create ---
-const titleArg = Args.text({ name: "title" }).pipe(
-	Args.withDescription("Issue title"),
+const createTitleOption = Options.text("title").pipe(
+	Options.withDescription("Issue title"),
 );
-const projectRefArg = Args.text({ name: "project" }).pipe(
+const createProjectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
-		"Project identifier (e.g. PROJ). Use '@current' for the saved default project.",
+		"Project identifier (e.g. PROJ). Omit to use the saved current project.",
 	),
+	Args.withDefault(""),
 );
 
 const createPriorityOption = Options.optional(
@@ -285,13 +286,13 @@ export const issueCreate = Command.make(
 		description: createDescriptionOption,
 		assignee: createAssigneeOption,
 		label: createLabelOption,
-		project: projectRefArg,
-		title: titleArg,
+		title: createTitleOption,
+		project: createProjectArg,
 	},
 	issueCreateHandler,
 ).pipe(
 	Command.withDescription(
-		'Create a new issue in a project. Use @current to target the saved default project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create @current "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"\n  plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"',
+		'Create a new issue in a project. Omit PROJECT to use the saved current project.\n\nExamples:\n  plane issue create --title "Migrate Button component"\n  plane issue create --title "Migrate Button component" PROJ\n  plane issue create --priority high --state started --title "Fix lint pipeline"\n  plane issue create --description "Detailed context here" --title "Add dark mode" PROJ\n  plane issue create --assignee "Jane Doe" --title "Onboarding bug" PROJ',
 	),
 );
 // --- issue activity ---

@@ -144,12 +144,12 @@ plane issue get PROJ-29
 ### Create
 
 ```bash
-plane issue create PROJ "Issue title"
-plane issue create @current "Issue title"
-plane issue create --priority high --state started PROJ "Fix lint pipeline"
-plane issue create --description '<p>Detailed context</p>' PROJ "Add dark mode"
-plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"
-plane issue create --label "bug" PROJ "Regression in login flow"
+plane issue create --title "Issue title"
+plane issue create --title "Issue title" PROJ
+plane issue create --priority high --state started --title "Fix lint pipeline"
+plane issue create --description '<p>Detailed context</p>' --title "Add dark mode" PROJ
+plane issue create --assignee "Jane Doe" --title "Onboarding bug" PROJ
+plane issue create --label "bug" --title "Regression in login flow" PROJ
 ```
 
 ### Update
@@ -233,8 +233,8 @@ State IDs are UUIDs unique per project. Always fetch live — never hardcode.
 plane labels list
 plane labels list PROJ
 plane labels list PROJ --xml
-plane labels create PROJ "bug"
-plane labels create --color "#ff0000" PROJ "critical"
+plane labels create --name "bug"
+plane labels create --name "critical" --color "#ff0000" PROJ
 plane labels delete PROJ bug
 ```
 
@@ -271,6 +271,7 @@ Cycle IDs are UUIDs. Fetch them from `plane cycles list PROJ`.
 plane modules list
 plane modules list PROJ
 plane modules list PROJ --xml
+plane modules create --name "Sprint 3"
 plane modules delete PROJ <module-id>
 plane modules issues list PROJ <module-id>
 plane modules issues add PROJ <module-id> PROJ-29
@@ -299,7 +300,7 @@ plane pages list
 plane pages list PROJ
 plane pages list PROJ --xml
 plane pages get PROJ <page-id>             # full JSON including description_html
-plane pages create --name "My Page" PROJ
+plane pages create --name "My Page"
 plane pages create --name "My Page" --description '<p>Content here</p>' PROJ
 plane pages update --name "New Title" PROJ <page-id>
 plane pages update --description '<p>New content</p>' PROJ <page-id>
@@ -337,6 +338,8 @@ Some deployments do not expose page endpoints even when the project advertises p
 - No server-side text search — fetch all issues and filter locally.
 - No epics — use labels or modules to group related issues.
 - `description` in issue or page create and update flows is passed through to `description_html`; send HTML such as `<p>Details</p>` when you want formatted output.
+- `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
+- `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.
 - Always fetch state/label/member IDs live — never hardcode UUIDs across workspaces.
 - `plane issue get PROJ-N` is the fastest way to inspect all fields on a single issue.
 
