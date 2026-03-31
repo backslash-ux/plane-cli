@@ -1,7 +1,16 @@
+# Locate bun - git hooks run with a stripped PATH that often omits ~/.bun/bin
+BUN=$(command -v bun 2>/dev/null \
+  || command -v "$HOME/.bun/bin/bun" 2>/dev/null \
+  || echo "")
+if [ -z "$BUN" ]; then
+  echo "husky: bun not found in PATH or ~/.bun/bin – please install bun or add it to your PATH" >&2
+  exit 1
+fi
+
 # Check file sizes
 echo "Checking file sizes..."
-bun scripts/check-file-size.ts
+"$BUN" scripts/check-file-size.ts
 
 # Check test coverage
 echo "Checking test coverage..."
-bun run test:coverage:check
+"$BUN" scripts/check-coverage.ts
