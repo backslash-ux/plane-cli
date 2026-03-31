@@ -271,6 +271,7 @@ Cycle IDs are UUIDs. Fetch them from `plane cycles list PROJ`.
 plane modules list
 plane modules list PROJ
 plane modules list PROJ --xml
+plane modules create PROJ "Sprint 3"
 plane modules delete PROJ <module-id>
 plane modules issues list PROJ <module-id>
 plane modules issues add PROJ <module-id> PROJ-29
@@ -337,6 +338,8 @@ Some deployments do not expose page endpoints even when the project advertises p
 - No server-side text search — fetch all issues and filter locally.
 - No epics — use labels or modules to group related issues.
 - `description` in issue or page create and update flows is passed through to `description_html`; send HTML such as `<p>Details</p>` when you want formatted output.
+- `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
+- `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.
 - Always fetch state/label/member IDs live — never hardcode UUIDs across workspaces.
 - `plane issue get PROJ-N` is the fastest way to inspect all fields on a single issue.
 

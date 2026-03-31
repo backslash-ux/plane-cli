@@ -134,6 +134,7 @@ plane cycles issues add PROJ CYCLE_ID PROJ-29
 
 # Modules
 plane modules list PROJ
+plane modules create PROJ "Sprint 3"
 plane modules delete PROJ MODULE_ID
 plane modules issues list PROJ MODULE_ID
 plane modules issues add PROJ MODULE_ID PROJ-29
@@ -179,6 +180,8 @@ plane cycles list PROJ --json
 - `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
 - `plane issue link add` accepts an optional link title via `--title`.
 - `plane labels delete` accepts either the label UUID or the exact label name returned by `plane labels list`.
+- `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
+- `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.
 - `plane modules delete` accepts either the module UUID or the exact module name returned by `plane modules list`.
 - `plane modules issues remove` expects the module-issue identifier returned by `plane modules issues list`, not an issue ref.
 - `plane members list` is workspace-scoped and does not take a project argument.

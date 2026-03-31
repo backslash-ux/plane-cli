@@ -7,6 +7,14 @@ This project aims to follow [Keep a Changelog](https://keepachangelog.com/en/1.1
 Earlier project history may predate this file.
 
 ## [Unreleased]
+### Added   
+- `plane modules create` with optional description, status, schedule, and lead resolution. 
+
+### Changed
+
+### Validated
+
+## 1.0.0
 
 ### Added
 
