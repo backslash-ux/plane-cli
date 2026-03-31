@@ -6,7 +6,10 @@ export interface IssueUpdatePayload {
 	name?: string;
 	description_html?: string;
 	assignees?: string[];
-	label_ids?: string[];
+	labels?: string[];
+	start_date?: string | null;
+	target_date?: string | null;
+	estimate_point?: string | null;
 }
 
 export interface IssueCreatePayload {
@@ -15,7 +18,10 @@ export interface IssueCreatePayload {
 	state?: string;
 	description_html?: string;
 	assignees?: string[];
-	label_ids?: string[];
+	labels?: string[];
+	start_date?: string | null;
+	target_date?: string | null;
+	estimate_point?: string | null;
 }
 
 export interface WorklogPayload {

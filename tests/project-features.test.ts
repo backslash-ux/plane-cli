@@ -283,11 +283,7 @@ describe("feature gates", () => {
 		server.use(
 			http.get(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/estimates/`,
-				() =>
-					HttpResponse.json(
-						{ error: "Page not found." },
-						{ status: 404 },
-					),
+				() => HttpResponse.json({ error: "Page not found." }, { status: 404 }),
 			),
 		);
 		const { initHandler } = await import("@/commands/init");
@@ -313,9 +309,7 @@ describe("feature gates", () => {
 		expect(output).toContain("States:    2");
 		expect(output).toContain("Labels:    2");
 		expect(output).toContain("Estimate:  disabled");
-		expect(output).not.toContain(
-			"could not load project helper data",
-		);
+		expect(output).not.toContain("could not load project helper data");
 		const helperPath = getLocalProjectContextFilePath(repoDir);
 		expect(fs.existsSync(helperPath)).toBe(true);
 		const helper = JSON.parse(fs.readFileSync(helperPath, "utf8")) as {

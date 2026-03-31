@@ -19,9 +19,11 @@ function request(
 				);
 			let url = `${host}/api/v1/workspaces/${workspace}/${path}`;
 
-			// Always expand state on issue list/get calls (not intake-issues/ or cycle-issues/)
-			if (method === "GET" && /(?:^|\/)(issues\/)/.test(path)) {
-				url += url.includes("?") ? "&expand=state" : "?expand=state";
+			// Always expand state and labels on issue list/get calls (not intake-issues/ or cycle-issues/)
+			if (method === "GET" && /(?:^|\/)(?:issues\/)/.test(path)) {
+				url += url.includes("?")
+					? "&expand=state,labels"
+					: "?expand=state,labels";
 			}
 
 			const headers: Record<string, string> = {

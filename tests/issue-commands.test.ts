@@ -77,6 +77,18 @@ const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
 		HttpResponse.json(MEMBERS),
 	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
+		HttpResponse.json({
+			id: "proj-acme",
+			identifier: "ACME",
+			name: "Acme Project",
+			cycle_view: true,
+			module_view: true,
+			issue_views_view: true,
+			page_view: true,
+			inbox_view: true,
+		}),
+	),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -158,6 +170,9 @@ describe("issuesList", () => {
 					state: Option.some("completed"),
 					assignee: Option.none(),
 					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
 				}),
 			);
 		} finally {
@@ -209,6 +224,9 @@ describe("issuesList", () => {
 					state: Option.none(),
 					assignee: Option.some("alice@example.com"),
 					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
 				}),
 			);
 		} finally {
@@ -260,6 +278,9 @@ describe("issuesList", () => {
 					state: Option.none(),
 					assignee: Option.none(),
 					priority: Option.some("urgent"),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
 				}),
 			);
 		} finally {
@@ -285,6 +306,9 @@ describe("issuesList", () => {
 					state: Option.none(),
 					assignee: Option.none(),
 					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
 				}),
 			);
 		} finally {
@@ -294,6 +318,183 @@ describe("issuesList", () => {
 		const output = logs.join("\n");
 		expect(output).toContain("ACME-");
 		expect(output).toContain("Migrate Button");
+	});
+
+	it("filters by --no-assignee", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-assigned",
+								sequence_id: 1,
+								name: "Assigned issue",
+								priority: "high",
+								state: "s1",
+								assignees: ["m-alice"],
+							},
+							{
+								id: "i-unassigned",
+								sequence_id: 2,
+								name: "Unassigned issue",
+								priority: "low",
+								state: "s1",
+								assignees: [],
+							},
+						],
+					}),
+			),
+		);
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "ACME",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+					noAssignee: true,
+					stale: Option.none(),
+					cycle: Option.none(),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+		const output = logs.join("\n");
+		expect(output).toContain("Unassigned issue");
+		expect(output).not.toContain("Assigned issue");
+	});
+
+	it("filters by --stale", async () => {
+		const oldDate = new Date();
+		oldDate.setDate(oldDate.getDate() - 60);
+		const recentDate = new Date();
+		recentDate.setDate(recentDate.getDate() - 1);
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-stale",
+								sequence_id: 1,
+								name: "Stale issue",
+								priority: "high",
+								state: "s1",
+								updated_at: oldDate.toISOString(),
+							},
+							{
+								id: "i-recent",
+								sequence_id: 2,
+								name: "Recent issue",
+								priority: "low",
+								state: "s1",
+								updated_at: recentDate.toISOString(),
+							},
+						],
+					}),
+			),
+		);
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "ACME",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.some(30),
+					cycle: Option.none(),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+		const output = logs.join("\n");
+		expect(output).toContain("Stale issue");
+		expect(output).not.toContain("Recent issue");
+	});
+
+	it("filters by --cycle", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-in-cycle",
+								sequence_id: 1,
+								name: "In cycle issue",
+								priority: "high",
+								state: "s1",
+							},
+							{
+								id: "i-not-in-cycle",
+								sequence_id: 2,
+								name: "Not in cycle",
+								priority: "low",
+								state: "s1",
+							},
+						],
+					}),
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "cyc-1", name: "Sprint 1", status: "started" }],
+					}),
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/cyc-1/cycle-issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-in-cycle",
+								sequence_id: 1,
+								name: "In cycle issue",
+								priority: "high",
+								state: "s1",
+							},
+						],
+					}),
+			),
+		);
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "ACME",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.some("Sprint 1"),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+		const output = logs.join("\n");
+		expect(output).toContain("In cycle issue");
+		expect(output).not.toContain("Not in cycle");
 	});
 });
 
@@ -329,8 +530,13 @@ describe("issueUpdate", () => {
 					title: Option.none(),
 					description: Option.none(),
 					assignee: Option.none(),
-					label: Option.none(),
+					label: [],
 					noAssignee: false,
+					startDate: Option.none(),
+					targetDate: Option.none(),
+					estimate: Option.none(),
+					cycle: Option.none(),
+					module: Option.none(),
 				}),
 			);
 		} finally {
@@ -382,8 +588,13 @@ describe("issueUpdate", () => {
 					title: Option.none(),
 					description: Option.none(),
 					assignee: Option.none(),
-					label: Option.none(),
+					label: [],
 					noAssignee: false,
+					startDate: Option.none(),
+					targetDate: Option.none(),
+					estimate: Option.none(),
+					cycle: Option.none(),
+					module: Option.none(),
 				}),
 			);
 		} finally {
@@ -404,8 +615,13 @@ describe("issueUpdate", () => {
 					title: Option.none(),
 					description: Option.none(),
 					assignee: Option.none(),
-					label: Option.none(),
+					label: [],
 					noAssignee: false,
+					startDate: Option.none(),
+					targetDate: Option.none(),
+					estimate: Option.none(),
+					cycle: Option.none(),
+					module: Option.none(),
 				}),
 			),
 		);
@@ -442,8 +658,13 @@ describe("issueUpdate", () => {
 				title: Option.some("New title"),
 				description: Option.none(),
 				assignee: Option.none(),
-				label: Option.none(),
+				label: [],
 				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -550,7 +771,12 @@ describe("issueCreate", () => {
 					state: Option.none(),
 					description: Option.none(),
 					assignee: Option.none(),
-					label: Option.none(),
+					label: [],
+					startDate: Option.none(),
+					targetDate: Option.none(),
+					estimate: Option.none(),
+					cycle: Option.none(),
+					module: Option.none(),
 				}),
 			);
 		} finally {
@@ -596,7 +822,12 @@ describe("issueCreate", () => {
 					state: Option.some("completed"),
 					description: Option.none(),
 					assignee: Option.none(),
-					label: Option.none(),
+					label: [],
+					startDate: Option.none(),
+					targetDate: Option.none(),
+					estimate: Option.none(),
+					cycle: Option.none(),
+					module: Option.none(),
 				}),
 			);
 		} finally {
@@ -635,7 +866,12 @@ describe("issueCreate description", () => {
 				state: Option.none(),
 				description: Option.some("Some context here"),
 				assignee: Option.none(),
-				label: Option.none(),
+				label: [],
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -671,7 +907,12 @@ describe("issueCreate description", () => {
 				state: Option.none(),
 				description: Option.some("<p>Raw <b>HTML</b></p>"),
 				assignee: Option.none(),
-				label: Option.none(),
+				label: [],
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -709,8 +950,13 @@ describe("issueUpdate description", () => {
 				title: Option.none(),
 				description: Option.some("Updated description"),
 				assignee: Option.none(),
-				label: Option.none(),
+				label: [],
 				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -746,8 +992,13 @@ describe("issueUpdate description", () => {
 				title: Option.none(),
 				description: Option.some("<b>bold</b>"),
 				assignee: Option.none(),
-				label: Option.none(),
+				label: [],
 				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -785,8 +1036,13 @@ describe("issueUpdate assignee", () => {
 				title: Option.none(),
 				description: Option.none(),
 				assignee: Option.some("Alice"),
-				label: Option.none(),
+				label: [],
 				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -822,8 +1078,13 @@ describe("issueUpdate assignee", () => {
 				title: Option.none(),
 				description: Option.none(),
 				assignee: Option.none(),
-				label: Option.none(),
+				label: [],
 				noAssignee: true,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -857,8 +1118,13 @@ describe("issueUpdate assignee", () => {
 				title: Option.none(),
 				description: Option.none(),
 				assignee: Option.some("bob@example.com"),
-				label: Option.none(),
+				label: [],
 				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -896,7 +1162,12 @@ describe("issueCreate assignee", () => {
 				state: Option.none(),
 				description: Option.none(),
 				assignee: Option.some("Alice"),
-				label: Option.none(),
+				label: [],
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
@@ -934,14 +1205,17 @@ describe("issueUpdate label", () => {
 				title: Option.none(),
 				description: Option.none(),
 				assignee: Option.none(),
-				label: Option.some("bug"),
+				label: ["bug"],
 				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
-		expect((patchedBody as { label_ids?: string[] }).label_ids).toEqual([
-			"l-bug",
-		]);
+		expect((patchedBody as { labels?: string[] }).labels).toEqual(["l-bug"]);
 	});
 });
 
@@ -973,13 +1247,16 @@ describe("issueCreate label", () => {
 				state: Option.none(),
 				description: Option.none(),
 				assignee: Option.none(),
-				label: Option.some("Bug"),
+				label: ["Bug"],
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
 			}),
 		);
 
-		expect((postedBody as { label_ids?: string[] }).label_ids).toEqual([
-			"l-bug",
-		]);
+		expect((postedBody as { labels?: string[] }).labels).toEqual(["l-bug"]);
 	});
 });
 
@@ -1128,5 +1405,324 @@ describe("--description argv parsing", () => {
 		expect(
 			(patchedBody as { description_html?: string }).description_html,
 		).toBe("New desc");
+	});
+});
+
+describe("issueUpdate new fields", () => {
+	it("sets startDate and targetDate", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+		const { issueUpdateHandler } = await import("@/commands/issue");
+		await Effect.runPromise(
+			issueUpdateHandler({
+				ref: "ACME-29",
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: [],
+				noAssignee: false,
+				startDate: Option.some("2025-07-01"),
+				targetDate: Option.some("2025-07-15"),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.none(),
+			}),
+		);
+		const body = patchedBody as {
+			start_date?: string;
+			target_date?: string;
+		};
+		expect(body.start_date).toBe("2025-07-01");
+		expect(body.target_date).toBe("2025-07-15");
+	});
+
+	it("sets estimate", async () => {
+		let patchedBody: unknown;
+		server.use(
+			http.patch(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				async ({ request }) => {
+					patchedBody = await request.json();
+					return HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "high",
+						state: "s1",
+					});
+				},
+			),
+		);
+		const { issueUpdateHandler } = await import("@/commands/issue");
+		await Effect.runPromise(
+			issueUpdateHandler({
+				ref: "ACME-29",
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: [],
+				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.some("5"),
+				cycle: Option.none(),
+				module: Option.none(),
+			}),
+		);
+		expect((patchedBody as { estimate_point?: string }).estimate_point).toBe(
+			"5",
+		);
+	});
+
+	it("adds issue to cycle on update", async () => {
+		let cyclePOSTcalled = false;
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "cyc-x", name: "Sprint X", status: "started" }],
+					}),
+			),
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/cyc-x/cycle-issues/`,
+				() => {
+					cyclePOSTcalled = true;
+					return HttpResponse.json({ issues: ["i1"] }, { status: 201 });
+				},
+			),
+		);
+		const { issueUpdateHandler } = await import("@/commands/issue");
+		await Effect.runPromise(
+			issueUpdateHandler({
+				ref: "ACME-29",
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: [],
+				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.some("Sprint X"),
+				module: Option.none(),
+			}),
+		);
+		expect(cyclePOSTcalled).toBe(true);
+	});
+
+	it("adds issue to module on update", async () => {
+		let modulePOSTcalled = false;
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "mod-y", name: "Module Y", status: "active" }],
+					}),
+			),
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod-y/module-issues/`,
+				() => {
+					modulePOSTcalled = true;
+					return HttpResponse.json({ issues: ["i1"] }, { status: 201 });
+				},
+			),
+		);
+		const { issueUpdateHandler } = await import("@/commands/issue");
+		await Effect.runPromise(
+			issueUpdateHandler({
+				ref: "ACME-29",
+				state: Option.none(),
+				priority: Option.none(),
+				title: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: [],
+				noAssignee: false,
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.some("Module Y"),
+			}),
+		);
+		expect(modulePOSTcalled).toBe(true);
+	});
+});
+
+describe("issueCreate new fields", () => {
+	it("sets dates and estimate on create", async () => {
+		let postedBody: unknown;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				async ({ request }) => {
+					postedBody = await request.json();
+					return HttpResponse.json({
+						id: "new-dates",
+						sequence_id: 400,
+						name: "Dated issue",
+						priority: "none",
+						state: "s1",
+					});
+				},
+			),
+		);
+		const { issueCreateHandler } = await import("@/commands/issue");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				issueCreateHandler({
+					project: "ACME",
+					title: "Dated issue",
+					priority: Option.none(),
+					state: Option.none(),
+					description: Option.none(),
+					assignee: Option.none(),
+					label: [],
+					startDate: Option.some("2025-08-01"),
+					targetDate: Option.some("2025-08-15"),
+					estimate: Option.some("3"),
+					cycle: Option.none(),
+					module: Option.none(),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+		const body = postedBody as {
+			start_date?: string;
+			target_date?: string;
+			estimate_point?: string;
+		};
+		expect(body.start_date).toBe("2025-08-01");
+		expect(body.target_date).toBe("2025-08-15");
+		expect(body.estimate_point).toBe("3");
+		expect(logs.join("\n")).toContain("Created ACME-400");
+	});
+
+	it("adds created issue to cycle", async () => {
+		let cyclePOSTcalled = false;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				async ({ request }) => {
+					const b = await request.json();
+					return HttpResponse.json({
+						id: "new-cyc",
+						sequence_id: 401,
+						name: (b as { name: string }).name,
+						priority: "none",
+						state: "s1",
+					});
+				},
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "cyc-a", name: "Sprint A", status: "started" }],
+					}),
+			),
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/cyc-a/cycle-issues/`,
+				() => {
+					cyclePOSTcalled = true;
+					return HttpResponse.json({ issues: ["new-cyc"] }, { status: 201 });
+				},
+			),
+		);
+		const { issueCreateHandler } = await import("@/commands/issue");
+		await Effect.runPromise(
+			issueCreateHandler({
+				project: "ACME",
+				title: "Cycle-bound issue",
+				priority: Option.none(),
+				state: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: [],
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.some("Sprint A"),
+				module: Option.none(),
+			}),
+		);
+		expect(cyclePOSTcalled).toBe(true);
+	});
+
+	it("adds created issue to module", async () => {
+		let modulePOSTcalled = false;
+		server.use(
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				async ({ request }) => {
+					const b = await request.json();
+					return HttpResponse.json({
+						id: "new-mod",
+						sequence_id: 402,
+						name: (b as { name: string }).name,
+						priority: "none",
+						state: "s1",
+					});
+				},
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "mod-b", name: "Module B", status: "active" }],
+					}),
+			),
+			http.post(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod-b/module-issues/`,
+				() => {
+					modulePOSTcalled = true;
+					return HttpResponse.json({ issues: ["new-mod"] }, { status: 201 });
+				},
+			),
+		);
+		const { issueCreateHandler } = await import("@/commands/issue");
+		await Effect.runPromise(
+			issueCreateHandler({
+				project: "ACME",
+				title: "Module-bound issue",
+				priority: Option.none(),
+				state: Option.none(),
+				description: Option.none(),
+				assignee: Option.none(),
+				label: [],
+				startDate: Option.none(),
+				targetDate: Option.none(),
+				estimate: Option.none(),
+				cycle: Option.none(),
+				module: Option.some("Module B"),
+			}),
+		);
+		expect(modulePOSTcalled).toBe(true);
 	});
 });

@@ -10,6 +10,13 @@ export const StateSchema = Schema.Struct({
 });
 export type State = typeof StateSchema.Type;
 
+export const IssueLabelSchema = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	color: Schema.optional(Schema.NullOr(Schema.String)),
+});
+export type IssueLabel = typeof IssueLabelSchema.Type;
+
 export const IssueSchema = Schema.Struct({
 	id: Schema.String,
 	sequence_id: Schema.Number,
@@ -19,6 +26,14 @@ export const IssueSchema = Schema.Struct({
 	assignees: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 	description_html: Schema.optional(Schema.NullOr(Schema.String)),
 	estimate_point: Schema.optional(Schema.NullOr(Schema.String)),
+	start_date: Schema.optional(Schema.NullOr(Schema.String)),
+	target_date: Schema.optional(Schema.NullOr(Schema.String)),
+	completed_at: Schema.optional(Schema.NullOr(Schema.String)),
+	created_at: Schema.optional(Schema.NullOr(Schema.String)),
+	updated_at: Schema.optional(Schema.NullOr(Schema.String)),
+	labels: Schema.optional(
+		Schema.NullOr(Schema.Array(Schema.Union(Schema.String, IssueLabelSchema))),
+	),
 });
 export type Issue = typeof IssueSchema.Type;
 
@@ -55,9 +70,15 @@ export const MembersResponseSchema = Schema.Array(MemberSchema);
 export const CycleSchema = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
-	status: Schema.optional(Schema.String),
+	status: Schema.optional(Schema.NullOr(Schema.String)),
 	start_date: Schema.optional(Schema.NullOr(Schema.String)),
 	end_date: Schema.optional(Schema.NullOr(Schema.String)),
+	total_issues: Schema.optional(Schema.Number),
+	completed_issues: Schema.optional(Schema.Number),
+	cancelled_issues: Schema.optional(Schema.Number),
+	started_issues: Schema.optional(Schema.Number),
+	unstarted_issues: Schema.optional(Schema.Number),
+	backlog_issues: Schema.optional(Schema.Number),
 });
 export type Cycle = typeof CycleSchema.Type;
 
