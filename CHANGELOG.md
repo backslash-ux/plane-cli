@@ -8,6 +8,18 @@ Earlier project history may predate this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Issue Data Visibility.** `plane issue get` and `plane issues list --json` now include `start_date`, `target_date`, `completed_at`, `created_at`, `updated_at`, `estimate_point`, and full label objects (with `id`, `name`, `color`). The API expand was broadened from `state` to `state,labels`.
+- **Issue Attribute Writing.** `plane issue create` and `plane issue update` support new flags: `--start-date`, `--target-date` (alias `--due-date`), `--estimate`, `--cycle` (name or UUID), and `--module` (name or UUID). `--label` can now be passed multiple times for multi-label assignment.
+- **Advanced Issue Filtering.** `plane issues list` supports `--no-assignee`, `--stale <days>` (issues not updated in N+ days), and `--cycle <name|UUID>` filters.
+- **Cycle Lifecycle Management.** `plane cycles create`, `plane cycles update`, and `plane cycles delete` commands with date validation and name-based resolution. `plane cycles list` now shows issue stats (`total_issues`, `completed_issues`, `cancelled_issues`) and a computed cycle status (draft, upcoming, current, completed).
+- **Smart Resolution.** `resolveCycle` joins `resolveModule` for name-to-UUID resolution so automation scripts stay readable.
+
+### Changed
+
+- Extracted issue link, comments, and worklogs sub-commands into `src/commands/issue-sub.ts` to keep `issue.ts` under the 700-line file-size limit.
+
 ## 1.1.0
 
 ### Added

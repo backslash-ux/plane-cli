@@ -52,10 +52,13 @@ ALL SUBCOMMANDS
   init                Set up global or local config interactively
   .                   local init
   projects            list | current | use
-  issues list         List issues (supports --state, --assignee, --priority)
+  issues list         List issues (supports --state, --assignee, --priority,
+                      --no-assignee, --stale, --cycle)
   issue               get | create | update | delete | comment | activity |
                       link | comments | worklogs
-  cycles              list | issues (list, add)
+                      create/update support --start-date, --target-date,
+                      --estimate, --cycle, --module, --label (repeatable)
+  cycles              list | create | update | delete | issues (list, add)
   modules             list | create | delete | issues (list, add, remove)
   intake              list | accept | reject
   pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate

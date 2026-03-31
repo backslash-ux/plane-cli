@@ -130,6 +130,9 @@ plane issues list PROJ --state started
 plane issues list PROJ --state backlog
 plane issues list PROJ --assignee "Jane Doe"
 plane issues list PROJ --priority high
+plane issues list PROJ --no-assignee
+plane issues list PROJ --stale 7
+plane issues list PROJ --cycle "Week 14"
 plane issues list PROJ --xml
 ```
 
@@ -149,7 +152,11 @@ plane issue create --title "Issue title" PROJ
 plane issue create --priority high --state started --title "Fix lint pipeline"
 plane issue create --description '<p>Detailed context</p>' --title "Add dark mode" PROJ
 plane issue create --assignee "Jane Doe" --title "Onboarding bug" PROJ
-plane issue create --label "bug" --title "Regression in login flow" PROJ
+plane issue create --label "bug" --label "urgent" --title "Regression in login flow" PROJ
+plane issue create --start-date 2025-04-01 --target-date 2025-04-14 --title "Sprint task" PROJ
+plane issue create --estimate <UUID> --title "Sized work" PROJ
+plane issue create --cycle "Week 14" --title "Scoped to cycle" PROJ
+plane issue create --module "Sprint 3" --title "Scoped to module" PROJ
 ```
 
 ### Update
@@ -166,6 +173,11 @@ plane issue update --description '<p>Updated context</p>' PROJ-29
 plane issue update --assignee "Jane Doe" PROJ-29
 plane issue update --no-assignee PROJ-29
 plane issue update --label "enhancement" PROJ-29
+plane issue update --label "bug" --label "critical" PROJ-29
+plane issue update --start-date 2025-04-01 --target-date 2025-04-14 PROJ-29
+plane issue update --estimate <UUID> PROJ-29
+plane issue update --cycle "Week 14" PROJ-29
+plane issue update --module "Sprint 3" PROJ-29
 ```
 
 ### Delete
@@ -257,11 +269,16 @@ Members are workspace-scoped. This command does not take a project argument.
 plane cycles list
 plane cycles list PROJ
 plane cycles list PROJ --xml
+plane cycles create --name "Week 14" --start-date 2025-04-01 --end-date 2025-04-07 PROJ
+plane cycles update --end-date 2025-04-08 PROJ "Week 14"
+plane cycles delete PROJ "Week 14"
 plane cycles issues list PROJ <cycle-id>
 plane cycles issues add PROJ <cycle-id> PROJ-29
 ```
 
 Cycle IDs are UUIDs. Fetch them from `plane cycles list PROJ`.
+Cycle create/update/delete accept cycle names for convenience — the CLI resolves names to UUIDs internally.
+`plane cycles list --json` includes `total_issues`, `completed_issues`, and `cancelled_issues` counts plus a computed status (draft, upcoming, current, completed).
 
 ---
 
@@ -328,8 +345,14 @@ Some deployments do not expose page endpoints even when the project advertises p
 | `state_detail` | Always null — ignore |
 | `priority` | `urgent`, `high`, `medium`, `low`, `none` |
 | `assignees` | Array of user UUIDs |
+| `labels` | Array of label objects (`id`, `name`, `color`) |
 | `label_ids` | Array of label UUIDs |
-| `due_date` | null or ISO date string |
+| `start_date` | null or ISO date string |
+| `target_date` | null or ISO date string |
+| `completed_at` | null or ISO timestamp (when issue moved to completed state group) |
+| `created_at` | ISO timestamp |
+| `updated_at` | ISO timestamp |
+| `estimate_point` | null or estimate value |
 
 ---
 
@@ -338,6 +361,9 @@ Some deployments do not expose page endpoints even when the project advertises p
 - No server-side text search — fetch all issues and filter locally.
 - No epics — use labels or modules to group related issues.
 - `description` in issue or page create and update flows is passed through to `description_html`; send HTML such as `<p>Details</p>` when you want formatted output.
+- `--target-date` has an alias `--due-date` for convenience.
+- `--label` can be specified multiple times for multi-label assignment.
+- `--cycle` and `--module` accept either a UUID or the exact name listed by `plane cycles list` / `plane modules list`. The CLI resolves names internally.
 - `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
 - `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.
 - Always fetch state/label/member IDs live — never hardcode UUIDs across workspaces.
