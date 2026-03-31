@@ -94,5 +94,5 @@ FOR AI AGENTS / BOTS
 
 export const cli = Command.run(plane, {
 	name: "plane",
-	version: "0.1.11",
+	version: "1.0.0",
 });
