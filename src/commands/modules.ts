@@ -32,8 +32,8 @@ const moduleArg = Args.text({ name: "module" }).pipe(
 		"Module UUID or exact name (from 'plane modules list PROJECT')",
 	),
 );
-const nameArg = Args.text({ name: "name" }).pipe(
-	Args.withDescription("Module name"),
+const createNameOption = Options.text("name").pipe(
+	Options.withDescription("Module name"),
 );
 
 const descriptionOption = Options.optional(Options.text("description")).pipe(
@@ -169,18 +169,18 @@ export function modulesCreateHandler({
 export const modulesCreate = Command.make(
 	"create",
 	{
+		name: createNameOption,
 		description: descriptionOption,
 		status: statusOption,
 		startDate: startDateOption,
 		targetDate: targetDateOption,
 		lead: leadOption,
-		project: projectArg,
-		name: nameArg,
+		project: listProjectArg,
 	},
 	modulesCreateHandler,
 ).pipe(
 	Command.withDescription(
-		'Create a new module in a project. Use @current to target the saved default project.\n\nExamples:\n  plane modules create PROJ "Sprint 3"\n  plane modules create --status planned PROJ "Design System Rollout"\n  plane modules create --lead "Jane Doe" --start-date 2026-04-01 --target-date 2026-04-30 PROJ "Mobile Launch"',
+		'Create a new module in a project. Omit PROJECT to use the saved current project.\n\nExamples:\n  plane modules create --name "Sprint 3"\n  plane modules create --name "Sprint 3" PROJ\n  plane modules create --name "Design System Rollout" --status planned PROJ\n  plane modules create --name "Mobile Launch" --lead "Jane Doe" --start-date 2026-04-01 --target-date 2026-04-30',
 	),
 );
 
@@ -370,7 +370,7 @@ export const moduleIssues = Command.make("issues").pipe(
 
 export const modules = Command.make("modules").pipe(
 	Command.withDescription(
-		'Manage modules (groups of related issues). Subcommands: list, create, delete, issues\n\nExamples:\n  plane modules list PROJ\n  plane modules create PROJ "Sprint 3"\n  plane modules delete PROJ <module-id>\n  plane modules issues list PROJ <module-id>\n  plane modules issues add PROJ <module-id> PROJ-29',
+		'Manage modules (groups of related issues). Subcommands: list, create, delete, issues\n\nExamples:\n  plane modules list PROJ\n  plane modules create --name "Sprint 3"\n  plane modules delete PROJ <module-id>\n  plane modules issues list PROJ <module-id>\n  plane modules issues add PROJ <module-id> PROJ-29',
 	),
 	Command.withSubcommands([
 		modulesList,

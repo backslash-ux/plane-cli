@@ -103,8 +103,8 @@ plane issues list
 plane issues list PROJ
 plane issues list PROJ --state started
 plane issue get PROJ-29
-plane issue create PROJ "Title"
-plane issue create @current "Title"
+plane issue create --title "Title"
+plane issue create --title "Title" PROJ
 plane issue update --state completed --priority high PROJ-29
 plane issue delete PROJ-29
 
@@ -134,7 +134,7 @@ plane cycles issues add PROJ CYCLE_ID PROJ-29
 
 # Modules
 plane modules list PROJ
-plane modules create PROJ "Sprint 3"
+plane modules create --name "Sprint 3"
 plane modules delete PROJ MODULE_ID
 plane modules issues list PROJ MODULE_ID
 plane modules issues add PROJ MODULE_ID PROJ-29

@@ -11,6 +11,7 @@ Earlier project history may predate this file.
 - `plane modules create` with optional description, status, schedule, and lead resolution. 
 
 ### Changed
+- **Consistent project defaulting for create commands.** `issue create`, `modules create`, `labels create`, and `pages create` now use `--title`/`--name` options instead of positional args, so the project positional can be omitted to use the saved current project.
 
 ### Validated
 

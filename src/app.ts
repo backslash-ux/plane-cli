@@ -36,9 +36,9 @@ QUICK START
   plane issues list                   List issues for the saved current project
   plane issues list PROJ              List issues for a project
   plane issue get PROJ-29             Get full JSON for an issue
-  plane issue create PROJ "title"     Create an issue
-  plane issue create @current "title" Create an issue in the saved current project
-  plane modules create PROJ "Sprint 3"
+  plane issue create --title "title"  Create an issue in the saved current project
+  plane issue create --title "title" PROJ
+  plane modules create --name "Sprint 3"
   plane issue update --state done PROJ-29
   plane issue comment PROJ-29 "text"  Add a comment
 

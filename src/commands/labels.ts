@@ -47,8 +47,8 @@ export const labelsList = Command.make(
 
 // --- labels create ---
 
-const nameArg = Args.text({ name: "name" }).pipe(
-	Args.withDescription("Label name"),
+const createNameOption = Options.text("name").pipe(
+	Options.withDescription("Label name"),
 );
 const colorOption = Options.optional(Options.text("color")).pipe(
 	Options.withDescription("Hex color e.g. #ff0000"),
@@ -61,8 +61,12 @@ const labelArg = Args.text({ name: "label" }).pipe(
 
 export const labelsCreate = Command.make(
 	"create",
-	{ color: colorOption, project: projectArg, name: nameArg },
+	{ color: colorOption, project: listProjectArg, name: createNameOption },
 	labelsCreateHandler,
+).pipe(
+	Command.withDescription(
+		'Create a new label in a project. Omit PROJECT to use the saved current project.\n\nExamples:\n  plane labels create --name bug\n  plane labels create --name bug --color "#ff0000" PROJ',
+	),
 );
 
 export function labelsCreateHandler({
