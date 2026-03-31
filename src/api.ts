@@ -1,34 +1,5 @@
 import { Effect, Schema } from "effect";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
-
-const CONFIG_FILE = path.join(os.homedir(), ".config", "plane", "config.json");
-
-function readConfigFile(): Partial<{
-	token: string;
-	host: string;
-	workspace: string;
-}> {
-	try {
-		return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-	} catch {
-		return {};
-	}
-}
-
-function getConfig() {
-	const file = readConfigFile();
-	return {
-		token: process.env["PLANE_API_TOKEN"] ?? file.token ?? "",
-		host: (
-			process.env["PLANE_HOST"] ??
-			file.host ??
-			"https://plane.so"
-		).replace(/\/$/, ""),
-		workspace: process.env["PLANE_WORKSPACE"] ?? file.workspace ?? "",
-	};
-}
+import { getConfig } from "./user-config.js";
 
 function request(
 	method: string,
@@ -38,8 +9,14 @@ function request(
 	return Effect.tryPromise({
 		try: async () => {
 			const { token, host, workspace } = getConfig();
-			if (!token) throw new Error("No API token configured. Run 'plane init' or set PLANE_API_TOKEN.");
-			if (!workspace) throw new Error("No workspace configured. Run 'plane init' or set PLANE_WORKSPACE.");
+			if (!token)
+				throw new Error(
+					"No API token configured. Run 'plane init', 'plane init --local', 'plane . init', or set PLANE_API_TOKEN.",
+				);
+			if (!workspace)
+				throw new Error(
+					"No workspace configured. Run 'plane init', 'plane init --local', 'plane . init', or set PLANE_WORKSPACE.",
+				);
 			let url = `${host}/api/v1/workspaces/${workspace}/${path}`;
 
 			// Always expand state on issue list/get calls (not intake-issues/ or cycle-issues/)
@@ -75,10 +52,13 @@ function request(
 				return JSON.parse(text);
 			} catch {
 				// Escape bare control characters inside JSON string values and retry.
-				const sanitized = text.replace(
-					/"(?:[^"\\]|\\.)*"/g,
-					(match) => match.replace(/[\x00-\x1F]/g, (c) => {
-						const hex = c.charCodeAt(0).toString(16).padStart(4, "0");
+				const sanitized = text.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+					match.replace(/./gsu, (c) => {
+						const code = c.charCodeAt(0);
+						if (code > 0x1f) {
+							return c;
+						}
+						const hex = code.toString(16).padStart(4, "0");
 						return `\\u${hex}`;
 					}),
 				);

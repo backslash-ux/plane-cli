@@ -8,7 +8,7 @@ import {
 	it,
 } from "bun:test";
 import { Effect } from "effect";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
 
@@ -18,6 +18,16 @@ const WS = "testws";
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
 ];
+const PROJECT_DETAIL = {
+	id: "proj-acme",
+	identifier: "ACME",
+	name: "Acme Project",
+	module_view: true,
+	cycle_view: true,
+	issue_views_view: true,
+	page_view: true,
+	inbox_view: true,
+};
 const ISSUES = [
 	{
 		id: "i1",
@@ -33,15 +43,18 @@ const MODULES = [
 ];
 const MODULE_ISSUES = [
 	{
-		id: "mi1",
-		issue: "i1",
-		issue_detail: { id: "i1", sequence_id: 29, name: "Migrate Button" },
+		id: "i1",
+		sequence_id: 29,
+		name: "Migrate Button",
 	},
 ];
 
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
+		HttpResponse.json(PROJECT_DETAIL),
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
 		HttpResponse.json({ results: ISSUES }),
@@ -60,16 +73,16 @@ afterAll(() => server.close());
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
 });
 
 describe("modulesList", () => {
@@ -141,6 +154,72 @@ describe("modulesList", () => {
 	});
 });
 
+describe("modulesDelete", () => {
+	it("deletes a module by UUID", async () => {
+		let deleted = false;
+		server.use(
+			http.delete(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/`,
+				() => {
+					deleted = true;
+					return new HttpResponse(null, { status: 204 });
+				},
+			),
+		);
+
+		const { modulesDeleteHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				modulesDeleteHandler({
+					project: "ACME",
+					module: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(deleted).toBe(true);
+		expect(logs.join("\n")).toContain("Deleted module: Sprint 1 (mod1)");
+	});
+
+	it("deletes a module by exact name", async () => {
+		let deleted = false;
+		server.use(
+			http.delete(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod2/`,
+				() => {
+					deleted = true;
+					return new HttpResponse(null, { status: 204 });
+				},
+			),
+		);
+
+		const { modulesDeleteHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				modulesDeleteHandler({
+					project: "ACME",
+					module: "Sprint 2",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(deleted).toBe(true);
+		expect(logs.join("\n")).toContain("Deleted module: Sprint 2 (mod2)");
+	});
+});
+
 describe("moduleIssuesList", () => {
 	it("lists issues in a module with detail", async () => {
 		const { moduleIssuesListHandler } = await import("@/commands/modules");
@@ -163,6 +242,36 @@ describe("moduleIssuesList", () => {
 		expect(output).toContain("ACME-");
 		expect(output).toContain("29");
 		expect(output).toContain("Migrate Button");
+	});
+
+	it("lists raw issue payloads returned by newer Plane APIs", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "i1", sequence_id: 29, name: "Migrate Button" }],
+					}),
+			),
+		);
+
+		const { moduleIssuesListHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				moduleIssuesListHandler({
+					project: "ACME",
+					moduleId: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(logs.join("\n")).toContain("ACME- 29  Migrate Button");
 	});
 
 	it("falls back to issue UUID when no issue_detail", async () => {

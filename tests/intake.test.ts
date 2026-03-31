@@ -8,7 +8,7 @@ import {
 	it,
 } from "bun:test";
 import { Effect } from "effect";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
 
@@ -18,20 +18,32 @@ const WS = "testws";
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
 ];
+const PROJECT_DETAIL = {
+	id: "proj-acme",
+	identifier: "ACME",
+	name: "Acme Project",
+	module_view: true,
+	cycle_view: true,
+	issue_views_view: true,
+	page_view: true,
+	intake_view: true,
+};
 const INTAKE_ISSUES = [
 	{
 		id: "int1",
+		issue: "i1",
 		issue_detail: {
 			id: "i1",
 			sequence_id: 5,
 			name: "Bug report",
 			priority: "high",
 		},
-		status: 0,
+		status: -2,
 		created_at: "2025-01-15T10:00:00Z",
 	},
 	{
 		id: "int2",
+		issue: "i2",
 		issue_detail: {
 			id: "i2",
 			sequence_id: 6,
@@ -43,6 +55,7 @@ const INTAKE_ISSUES = [
 	},
 	{
 		id: "int3",
+		issue: "i3",
 		created_at: "2025-01-13T10:00:00Z",
 	},
 ];
@@ -50,6 +63,9 @@ const INTAKE_ISSUES = [
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
+		HttpResponse.json(PROJECT_DETAIL),
 	),
 	http.get(
 		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/`,
@@ -62,16 +78,16 @@ afterAll(() => server.close());
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
 });
 
 describe("intakeList", () => {
@@ -131,7 +147,7 @@ describe("intakeAccept", () => {
 		let patchedBody: unknown;
 		server.use(
 			http.patch(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/i1/`,
 				async ({ request }) => {
 					patchedBody = await request.json();
 					return HttpResponse.json({
@@ -163,12 +179,12 @@ describe("intakeReject", () => {
 		let patchedBody: unknown;
 		server.use(
 			http.patch(
-				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/int1/`,
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/intake-issues/i1/`,
 				async ({ request }) => {
 					patchedBody = await request.json();
 					return HttpResponse.json({
 						id: "int1",
-						status: -2,
+						status: -1,
 						created_at: "2025-01-15T10:00:00Z",
 					});
 				},
@@ -185,7 +201,7 @@ describe("intakeReject", () => {
 		} finally {
 			console.log = orig;
 		}
-		expect((patchedBody as { status?: number }).status).toBe(-2);
+		expect((patchedBody as { status?: number }).status).toBe(-1);
 		expect(logs.join("\n")).toContain("rejected");
 	});
 });

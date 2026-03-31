@@ -34,9 +34,9 @@ function toXmlItem(obj: Record<string, unknown>, tag = "item"): string {
 				: toXmlItem(v as Record<string, unknown>, k),
 		)
 		.join("");
-	return `<${tag}${attrs ? " " + attrs : ""}>${children}</${tag}>`;
+	return `<${tag}${attrs ? ` ${attrs}` : ""}>${children}</${tag}>`;
 }
 
 export function toXml(results: readonly unknown[]): string {
-	return `<results>\n${results.map((r) => "  " + toXmlItem(r as Record<string, unknown>)).join("\n")}\n</results>`;
+	return `<results>\n${results.map((r) => `  ${toXmlItem(r as Record<string, unknown>)}`).join("\n")}\n</results>`;
 }

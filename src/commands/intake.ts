@@ -1,28 +1,50 @@
-import { Command, Options, Args } from "@effect/cli";
+import { Args, Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { IntakeIssuesResponseSchema } from "../config.js";
-import { resolveProject } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
+import { requireProjectFeature, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
 
-// Intake status codes: -2=rejected, -1=snoozed, 0=pending, 1=accepted, 2=duplicate
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
+
+// Intake status codes: -2=pending, -1=rejected, 0=snoozed, 1=accepted, 2=duplicate
 const STATUS_LABELS: Record<number, string> = {
-	[-2]: "rejected",
-	[-1]: "snoozed",
-	[0]: "pending",
-	[1]: "accepted",
-	[2]: "duplicate",
+	[-2]: "pending",
+	[-1]: "rejected",
+	0: "snoozed",
+	1: "accepted",
+	2: "duplicate",
 };
+
+function resolveIntakeMutationId(projectId: string, intakeId: string) {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/intake-issues/`);
+		const { results } = yield* decodeOrFail(IntakeIssuesResponseSchema, raw);
+		const match = results.find(
+			(item) =>
+				item.id === intakeId ||
+				item.issue === intakeId ||
+				item.issue_detail?.id === intakeId,
+		);
+		if (!match) {
+			return yield* Effect.fail(new Error(`Unknown intake issue: ${intakeId}`));
+		}
+		return match.issue ?? match.issue_detail?.id ?? match.id;
+	});
+}
 
 // --- intake list ---
 
 export function intakeListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "intake_view");
 		const raw = yield* api.get(`projects/${id}/intake-issues/`);
 		const { results } = yield* decodeOrFail(IntakeIssuesResponseSchema, raw);
 		if (jsonMode) {
@@ -38,7 +60,10 @@ export function intakeListHandler({ project }: { project: string }) {
 			return;
 		}
 		const lines = results.map((i) => {
-			const status = STATUS_LABELS[i.status ?? 0] ?? String(i.status ?? "?");
+			const status =
+				i.status != null
+					? (STATUS_LABELS[i.status] ?? String(i.status))
+					: "unknown";
 			const statusPad = status.padEnd(10);
 			if (i.issue_detail) {
 				return `${i.id}  [${statusPad}]  ${i.issue_detail.name}`;
@@ -51,11 +76,11 @@ export function intakeListHandler({ project }: { project: string }) {
 
 export const intakeList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	intakeListHandler,
 ).pipe(
 	Command.withDescription(
-		"List intake (triage) issues for a project. Shows status: pending, accepted, rejected, snoozed, duplicate.\n\nExample:\n  plane intake list PROJ",
+		"List intake (triage) issues for a project. Shows status: pending, accepted, rejected, snoozed, duplicate. Omit PROJECT to use the saved current project.\n\nExample:\n  plane intake list PROJ",
 	),
 );
 
@@ -74,7 +99,9 @@ export function intakeAcceptHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		yield* api.patch(`projects/${id}/intake-issues/${intakeId}/`, {
+		yield* requireProjectFeature(id, "intake_view");
+		const mutationId = yield* resolveIntakeMutationId(id, intakeId);
+		yield* api.patch(`projects/${id}/intake-issues/${mutationId}/`, {
 			status: 1,
 		});
 		yield* Console.log(`Intake issue ${intakeId} accepted`);
@@ -102,8 +129,10 @@ export function intakeRejectHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		yield* api.patch(`projects/${id}/intake-issues/${intakeId}/`, {
-			status: -2,
+		yield* requireProjectFeature(id, "intake_view");
+		const mutationId = yield* resolveIntakeMutationId(id, intakeId);
+		yield* api.patch(`projects/${id}/intake-issues/${mutationId}/`, {
+			status: -1,
 		});
 		yield* Console.log(`Intake issue ${intakeId} rejected`);
 	});

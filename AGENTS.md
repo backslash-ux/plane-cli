@@ -52,3 +52,38 @@ Before making non-trivial changes:
 - Use [CHANGELOG.md](./CHANGELOG.md) for notable user-facing changes.
 - Follow [docs/RELEASING.md](./docs/RELEASING.md) for release workflow expectations.
 - Respect [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) and [SECURITY.md](./SECURITY.md).
+
+## Known Deployment Compatibility
+
+The CLI has been validated against a real Plane instance. Be aware of these deployment-dependent behaviors when developing or testing:
+
+- **Pages**: The CLI targets the project-page API surface. Plane also has a separate workspace wiki page surface that the CLI does not cover. Both may return 404 on some deployments even when the project feature flag is enabled.
+- **Worklogs**: Time tracking is a Pro-plan feature. Non-Pro deployments will not expose worklog API endpoints.
+- **Feature gating**: The CLI returns explicit compatibility errors (not raw 404s) when a project feature is flagged on but the backing API route is absent.
+
+<!-- plane-cli local project context start -->
+## Plane Project Context
+This directory is scoped to Plane project PLANECLI (Plane CLI).
+
+When working as an AI agent in this directory:
+- Read `./.plane/project-context.json` before planning or applying Plane project changes.
+- Reuse the existing states, labels, and estimate points in that snapshot instead of creating duplicates.
+- Respect the feature flags in that snapshot before using cycles, modules, pages, intake, or estimates.
+- Prefer the `plane` CLI from this repository root for Plane project work instead of direct API calls.
+- Use `@current` as the default project selector once local init has been run.
+- If the shell may contain inherited `PLANE_*` variables, clear them before relying on `./.plane/config.json`.
+
+Common agent commands:
+
+```sh
+unset PLANE_HOST PLANE_WORKSPACE PLANE_API_TOKEN PLANE_PROJECT
+plane projects current
+plane issues list @current
+plane issue get PLANECLI-12
+plane issue update --state started PLANECLI-12
+```
+
+- Rerun `plane init --local` from this directory whenever the Plane project configuration changes so this context stays current.
+
+This section is managed by `plane-cli` and is updated by `plane init --local`.
+<!-- plane-cli local project context end -->

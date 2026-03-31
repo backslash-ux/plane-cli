@@ -1,13 +1,17 @@
-import { Command, Args, Options } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
-import { PagesResponseSchema, PageSchema } from "../config.js";
-import { resolveProject } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
+import { PageSchema, PagesResponseSchema } from "../config.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
+import { requireProjectFeature, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const pageIdArg = Args.text({ name: "page-id" }).pipe(
 	Args.withDescription("Page UUID (from 'plane pages list')"),
@@ -25,15 +29,43 @@ const descriptionOption = Options.optional(Options.text("description")).pipe(
 	Options.withDescription("Page description as HTML (e.g. '<p>Hello</p>')"),
 );
 
-interface PageCreatePayload { name: string; description_html?: string; }
-interface PageUpdatePayload { name?: string; description_html?: string; }
+interface PageCreatePayload {
+	name: string;
+	description_html?: string;
+}
+interface PageUpdatePayload {
+	name?: string;
+	description_html?: string;
+}
+
+function isNotFoundError(error: Error): boolean {
+	return /^HTTP 404:/.test(error.message);
+}
+
+function mapPageAvailabilityError<A>(
+	effect: Effect.Effect<A, Error>,
+	message: string,
+): Effect.Effect<A, Error> {
+	return effect.pipe(
+		Effect.catchAll((error) => {
+			if (isNotFoundError(error)) {
+				return Effect.fail(new Error(message));
+			}
+			return Effect.fail(error);
+		}),
+	);
+}
 
 // --- pages list ---
 
 export function pagesListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
-		const raw = yield* api.get(`projects/${id}/pages/`);
+		const { key, id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
+		const raw = yield* mapPageAvailabilityError(
+			api.get(`projects/${id}/pages/`),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		const { results } = yield* decodeOrFail(PagesResponseSchema, raw);
 		if (jsonMode) {
 			yield* Console.log(JSON.stringify(results, null, 2));
@@ -57,11 +89,11 @@ export function pagesListHandler({ project }: { project: string }) {
 
 export const pagesList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	pagesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List pages for a project. Shows page UUID, last updated date, and title.\n\nExample:\n  plane pages list PROJ",
+		"List pages for a project. Shows page UUID, last updated date, and title. Omit PROJECT to use the saved current project.\n\nExample:\n  plane pages list PROJ",
 	),
 );
 
@@ -76,6 +108,7 @@ export function pagesGetHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(JSON.stringify(page, null, 2));
@@ -104,12 +137,16 @@ export function pagesCreateHandler({
 	description: Option.Option<string>;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const body: PageCreatePayload = { name };
 		if (Option.isSome(description)) {
 			body.description_html = description.value;
 		}
-		const raw = yield* api.post(`projects/${id}/pages/`, body);
+		const raw = yield* mapPageAvailabilityError(
+			api.post(`projects/${id}/pages/`, body),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Created page ${page.id}: ${page.name}`);
 	});
@@ -121,7 +158,7 @@ export const pagesCreate = Command.make(
 	pagesCreateHandler,
 ).pipe(
 	Command.withDescription(
-		"Create a new page.\n\nExample:\n  plane pages create --name \"My Page\" PROJ",
+		'Create a new page.\n\nExample:\n  plane pages create --name "My Page" PROJ',
 	),
 );
 
@@ -143,6 +180,7 @@ export function pagesUpdateHandler({
 			yield* Effect.fail(new Error("provide at least --name or --description"));
 		}
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		const body: PageUpdatePayload = {};
 		if (Option.isSome(name)) body.name = name.value;
 		if (Option.isSome(description)) body.description_html = description.value;
@@ -154,11 +192,16 @@ export function pagesUpdateHandler({
 
 export const pagesUpdate = Command.make(
 	"update",
-	{ project: projectArg, pageId: pageIdArg, name: nameOptionalOption, description: descriptionOption },
+	{
+		project: projectArg,
+		pageId: pageIdArg,
+		name: nameOptionalOption,
+		description: descriptionOption,
+	},
 	pagesUpdateHandler,
 ).pipe(
 	Command.withDescription(
-		"Update a page's name or description.\n\nExample:\n  plane pages update --name \"New Title\" PROJ <page-id>",
+		'Update a page\'s name or description.\n\nExample:\n  plane pages update --name "New Title" PROJ <page-id>',
 	),
 );
 
@@ -173,6 +216,7 @@ export function pagesDeleteHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/`);
 		yield* Console.log(`Deleted page ${pageId}`);
 	});
@@ -199,6 +243,7 @@ export function pagesArchiveHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.post(`projects/${id}/pages/${pageId}/archive/`, {});
 		yield* Console.log(`Archived page ${pageId}`);
 	});
@@ -225,6 +270,7 @@ export function pagesUnarchiveHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/archive/`);
 		yield* Console.log(`Unarchived page ${pageId}`);
 	});
@@ -251,6 +297,7 @@ export function pagesLockHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.post(`projects/${id}/pages/${pageId}/lock/`, {});
 		yield* Console.log(`Locked page ${pageId}`);
 	});
@@ -277,6 +324,7 @@ export function pagesUnlockHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "page_view");
 		yield* api.delete(`projects/${id}/pages/${pageId}/lock/`);
 		yield* Console.log(`Unlocked page ${pageId}`);
 	});
@@ -303,7 +351,11 @@ export function pagesDuplicateHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
-		const raw = yield* api.post(`projects/${id}/pages/${pageId}/duplicate/`, {});
+		yield* requireProjectFeature(id, "page_view");
+		const raw = yield* api.post(
+			`projects/${id}/pages/${pageId}/duplicate/`,
+			{},
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Duplicated page ${page.id}: ${page.name}`);
 	});
@@ -326,7 +378,15 @@ export const pages = Command.make("pages").pipe(
 		"Manage project pages (documentation). Subcommands: list, get, create, update, delete, archive, unarchive, lock, unlock, duplicate\n\nExamples:\n  plane pages list PROJ\n  plane pages get PROJ <page-id>",
 	),
 	Command.withSubcommands([
-		pagesList, pagesGet, pagesCreate, pagesUpdate, pagesDelete,
-		pagesArchive, pagesUnarchive, pagesLock, pagesUnlock, pagesDuplicate,
+		pagesList,
+		pagesGet,
+		pagesCreate,
+		pagesUpdate,
+		pagesDelete,
+		pagesArchive,
+		pagesUnarchive,
+		pagesLock,
+		pagesUnlock,
+		pagesDuplicate,
 	]),
 );

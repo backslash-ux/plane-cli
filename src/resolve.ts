@@ -1,20 +1,75 @@
 import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
+import type { Issue, ProjectDetail } from "./config.js";
 import {
 	IssuesResponseSchema,
+	isProjectIntakeEnabled,
 	LabelsResponseSchema,
 	MembersResponseSchema,
+	ModulesResponseSchema,
+	ProjectDetailSchema,
 	ProjectsResponseSchema,
 	StatesResponseSchema,
 } from "./config.js";
-import type { Issue } from "./config.js";
+import { getConfig } from "./user-config.js";
 
 // Cache project list within a process invocation
 let _projectCache: Record<string, string> | null = null;
+let _projectDetailCache: Record<string, ProjectDetail> | null = null;
+
+type ProjectFeatureKey =
+	| "cycle_view"
+	| "module_view"
+	| "page_view"
+	| "intake_view";
+
+const FEATURE_LABELS: Record<ProjectFeatureKey, string> = {
+	cycle_view: "Cycles",
+	module_view: "Modules",
+	page_view: "Pages",
+	intake_view: "Intake",
+};
+
+const FEATURE_HINTS: Record<ProjectFeatureKey, string> = {
+	cycle_view: "Enable Cycles in the Plane project settings.",
+	module_view: "Enable Modules in the Plane project settings.",
+	page_view: "Enable Pages in the Plane project settings.",
+	intake_view: "Enable Intake in the Plane project settings.",
+};
+
+function isProjectFeatureEnabled(
+	project: ProjectDetail,
+	feature: ProjectFeatureKey,
+): boolean {
+	if (feature === "intake_view") {
+		return isProjectIntakeEnabled(project);
+	}
+	return project[feature];
+}
+
+function getConfiguredProject(identifier: string): string {
+	const trimmed = identifier.trim();
+	if (
+		trimmed &&
+		trimmed !== "." &&
+		trimmed.toLowerCase() !== "@current" &&
+		trimmed.toLowerCase() !== "@default"
+	) {
+		return trimmed;
+	}
+	const defaultProject = getConfig().defaultProject.trim();
+	if (defaultProject) {
+		return defaultProject;
+	}
+	throw new Error(
+		"No default project configured. Run 'plane init', 'plane init --local', 'plane . init', 'plane projects use PROJ', or set PLANE_PROJECT.",
+	);
+}
 
 /** Clear the project cache — for use in tests only */
 export function _clearProjectCache(): void {
 	_projectCache = null;
+	_projectDetailCache = null;
 }
 
 function getProjectMap(): Effect.Effect<Record<string, string>, Error> {
@@ -29,10 +84,60 @@ function getProjectMap(): Effect.Effect<Record<string, string>, Error> {
 	});
 }
 
+function getProjectDetail(
+	projectId: string,
+): Effect.Effect<ProjectDetail, Error> {
+	if (_projectDetailCache?.[projectId]) {
+		return Effect.succeed(_projectDetailCache[projectId]);
+	}
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/`);
+		const project = yield* decodeOrFail(ProjectDetailSchema, raw);
+		_projectDetailCache ??= {};
+		_projectDetailCache[projectId] = project;
+		return project;
+	});
+}
+
+export function getProjectFeatureDetails(projectId: string) {
+	return getProjectDetail(projectId).pipe(
+		Effect.map((project) => ({
+			project,
+			features: {
+				Cycles: project.cycle_view,
+				Modules: project.module_view,
+				Views: project.issue_views_view,
+				Pages: project.page_view,
+				Intake: isProjectIntakeEnabled(project),
+			},
+		})),
+	);
+}
+
+export function requireProjectFeature(
+	projectId: string,
+	feature: ProjectFeatureKey,
+): Effect.Effect<void, Error> {
+	return getProjectDetail(projectId).pipe(
+		Effect.flatMap((project) => {
+			if (isProjectFeatureEnabled(project, feature)) {
+				return Effect.succeed(void 0);
+			}
+			const featureLabel = FEATURE_LABELS[feature];
+			const featureFlag = feature === "intake_view" ? "intake_view" : feature;
+			return Effect.fail(
+				new Error(
+					`Project ${project.identifier} has ${featureLabel} disabled (${featureFlag}=false). ${FEATURE_HINTS[feature]}`,
+				),
+			);
+		}),
+	);
+}
+
 export function resolveProject(
 	identifier: string,
 ): Effect.Effect<{ key: string; id: string }, Error> {
-	const key = identifier.toUpperCase();
+	const key = getConfiguredProject(identifier).toUpperCase();
 	return getProjectMap().pipe(
 		Effect.flatMap((map) => {
 			const id = map[key];
@@ -124,13 +229,39 @@ export function getLabelId(
 	projectId: string,
 	name: string,
 ): Effect.Effect<string, Error> {
+	return resolveLabel(projectId, name).pipe(Effect.map((label) => label.id));
+}
+
+export function resolveLabel(
+	projectId: string,
+	nameOrId: string,
+): Effect.Effect<{ id: string; name: string }, Error> {
 	return Effect.gen(function* () {
 		const raw = yield* api.get(`projects/${projectId}/labels/`);
 		const { results } = yield* decodeOrFail(LabelsResponseSchema, raw);
-		const lower = name.toLowerCase();
-		const label = results.find((l) => l.name.toLowerCase() === lower);
+		const lower = nameOrId.toLowerCase();
+		const label = results.find(
+			(l) => l.id === nameOrId || l.name.toLowerCase() === lower,
+		);
 		if (!label)
-			return yield* Effect.fail(new Error(`Label not found: ${name}`));
-		return label.id;
+			return yield* Effect.fail(new Error(`Label not found: ${nameOrId}`));
+		return { id: label.id, name: label.name };
+	});
+}
+
+export function resolveModule(
+	projectId: string,
+	nameOrId: string,
+): Effect.Effect<{ id: string; name: string }, Error> {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/modules/`);
+		const { results } = yield* decodeOrFail(ModulesResponseSchema, raw);
+		const lower = nameOrId.toLowerCase();
+		const module = results.find(
+			(m) => m.id === nameOrId || m.name.toLowerCase() === lower,
+		);
+		if (!module)
+			return yield* Effect.fail(new Error(`Module not found: ${nameOrId}`));
+		return { id: module.id, name: module.name };
 	});
 }

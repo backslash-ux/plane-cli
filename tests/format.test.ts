@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { escapeHtmlText, formatIssue } from "@/format";
 import type { Issue } from "@/config";
+import { escapeHtmlText, formatIssue } from "@/format";
 
 const stateObj = { id: "s1", name: "In Progress", group: "started" };
 

@@ -10,7 +10,7 @@ import {
 import { Command } from "@effect/cli";
 import { NodeContext } from "@effect/platform-node";
 import { Effect, Layer, Option } from "effect";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
 
@@ -57,6 +57,14 @@ const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`, () =>
 		HttpResponse.json({ results: ISSUES }),
 	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/:issueId/`,
+		({ params }) => {
+			const issue = ISSUES.find((i) => i.id === params.issueId);
+			if (issue) return HttpResponse.json(issue);
+			return new HttpResponse(null, { status: 404 });
+		},
+	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/states/`, () =>
 		HttpResponse.json({ results: STATES }),
 	),
@@ -76,16 +84,17 @@ afterAll(() => server.close());
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
+	delete process.env.PLANE_PROJECT;
 });
 
 describe("issueGet", () => {
@@ -261,6 +270,31 @@ describe("issuesList", () => {
 		expect(output).toContain("Urgent fix");
 		expect(output).not.toContain("Low cleanup");
 	});
+
+	it("uses the saved current project when the project input is blank", async () => {
+		process.env.PLANE_PROJECT = "ACME";
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		const output = logs.join("\n");
+		expect(output).toContain("ACME-");
+		expect(output).toContain("Migrate Button");
+	});
 });
 
 describe("issueUpdate", () => {
@@ -320,6 +354,17 @@ describe("issueUpdate", () => {
 						state: "s1",
 					});
 				},
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/`,
+				() =>
+					HttpResponse.json({
+						id: "i1",
+						sequence_id: 29,
+						name: "Migrate Button",
+						priority: "urgent",
+						state: "s1",
+					}),
 			),
 		);
 
@@ -630,9 +675,9 @@ describe("issueCreate description", () => {
 			}),
 		);
 
-		expect(
-			(postedBody as { description_html?: string }).description_html,
-		).toBe("<p>Raw <b>HTML</b></p>");
+		expect((postedBody as { description_html?: string }).description_html).toBe(
+			"<p>Raw <b>HTML</b></p>",
+		);
 	});
 });
 

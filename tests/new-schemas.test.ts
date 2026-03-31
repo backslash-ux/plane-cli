@@ -1,14 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import { Effect, Schema } from "effect";
 import {
-	ActivitySchema,
 	ActivitiesResponseSchema,
+	ActivitySchema,
 	IssueLinkSchema,
 	IssueLinksResponseSchema,
-	ModuleSchema,
-	ModulesResponseSchema,
 	ModuleIssueSchema,
 	ModuleIssuesResponseSchema,
+	ModuleSchema,
+	ModulesResponseSchema,
 } from "@/config";
 
 async function decode<A, I>(
@@ -194,7 +194,19 @@ describe("ModuleIssueSchema", () => {
 			},
 		});
 		expect(mi.id).toBe("mi1");
-		expect(mi.issue_detail?.sequence_id).toBe(29);
+		expect(
+			"issue_detail" in mi ? mi.issue_detail?.sequence_id : undefined,
+		).toBe(29);
+	});
+
+	it("decodes a raw issue payload", async () => {
+		const mi = await decode(ModuleIssueSchema, {
+			id: "issue-uuid",
+			sequence_id: 29,
+			name: "Migrate Button",
+		});
+		expect(mi.id).toBe("issue-uuid");
+		expect("sequence_id" in mi ? mi.sequence_id : undefined).toBe(29);
 	});
 
 	it("decodes without issue_detail", async () => {
@@ -202,11 +214,11 @@ describe("ModuleIssueSchema", () => {
 			id: "mi1",
 			issue: "issue-uuid",
 		});
-		expect(mi.issue).toBe("issue-uuid");
-		expect(mi.issue_detail).toBeUndefined();
+		expect("issue" in mi ? mi.issue : undefined).toBe("issue-uuid");
+		expect("issue_detail" in mi ? mi.issue_detail : undefined).toBeUndefined();
 	});
 
-	it("rejects missing issue", async () => {
+	it("rejects payloads missing both issue relation and raw issue fields", async () => {
 		await expect(decode(ModuleIssueSchema, { id: "mi1" })).rejects.toThrow();
 	});
 });
@@ -214,7 +226,7 @@ describe("ModuleIssueSchema", () => {
 describe("ModuleIssuesResponseSchema", () => {
 	it("decodes results", async () => {
 		const resp = await decode(ModuleIssuesResponseSchema, {
-			results: [{ id: "mi1", issue: "uuid1" }],
+			results: [{ id: "issue-uuid", sequence_id: 29, name: "Migrate Button" }],
 		});
 		expect(resp.results).toHaveLength(1);
 	});

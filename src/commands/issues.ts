@@ -1,17 +1,19 @@
-import { Command, Options, Args } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Args, Command, Options } from "@effect/cli";
+import { Console, Effect, type Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
+import type { State } from "../config.js";
 import { IssuesResponseSchema } from "../config.js";
 import { formatIssue } from "../format.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 import { getMemberId, resolveProject } from "../resolve.js";
-import type { State } from "../config.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
-		"Project identifier — see 'plane projects list' for available identifiers",
+		"Project identifier — see 'plane projects list' for available identifiers. Use '@current' for the saved default project.",
 	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const stateOption = Options.optional(Options.text("state")).pipe(
 	Options.withDescription(
@@ -91,12 +93,12 @@ export const issuesList = Command.make(
 		state: stateOption,
 		assignee: assigneeOption,
 		priority: priorityOption,
-		project: projectArg,
+		project: listProjectArg,
 	},
 	issuesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List issues for a project ordered by sequence ID. Each line shows: REF  [state-group]  state-name  title",
+		"List issues for a project ordered by sequence ID. Each line shows: REF  [state-group]  state-name  title. Omit PROJECT to use the saved current project.",
 	),
 );
 

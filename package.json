@@ -1,5 +1,5 @@
 {
-  "name": "@backslash-ux/plane",
+  "name": "@backslash-ux/plane-cli",
   "publishConfig": {
     "access": "public"
   },
@@ -33,12 +33,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/backslash-ux/plane-cli.git"
+    "url": "git+https://github.com/backslash-ux/plane-cli-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/backslash-ux/plane-cli/issues"
+    "url": "https://github.com/backslash-ux/plane-cli-cli/issues"
   },
-  "homepage": "https://github.com/backslash-ux/plane-cli#readme",
+  "homepage": "https://github.com/backslash-ux/plane-cli-cli#readme",
   "engines": {
     "bun": ">=1.0.0"
   },

@@ -73,6 +73,50 @@ export const ProjectSchema = Schema.Struct({
 });
 export type Project = typeof ProjectSchema.Type;
 
+export const ProjectDetailSchema = Schema.Struct({
+	id: Schema.String,
+	identifier: Schema.String,
+	name: Schema.String,
+	module_view: Schema.Boolean,
+	cycle_view: Schema.Boolean,
+	issue_views_view: Schema.Boolean,
+	page_view: Schema.Boolean,
+	inbox_view: Schema.optional(Schema.Boolean),
+	intake_view: Schema.optional(Schema.Boolean),
+	estimate: Schema.optional(Schema.NullOr(Schema.String)),
+});
+export type ProjectDetail = typeof ProjectDetailSchema.Type;
+
+export function isProjectIntakeEnabled(
+	project: Pick<ProjectDetail, "inbox_view" | "intake_view">,
+): boolean {
+	return (project.inbox_view || project.intake_view) ?? false;
+}
+
+export const EstimateSchema = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	description: Schema.optional(Schema.NullOr(Schema.String)),
+	type: Schema.String,
+	last_used: Schema.optional(Schema.Boolean),
+	project: Schema.String,
+	workspace: Schema.String,
+});
+export type Estimate = typeof EstimateSchema.Type;
+
+export const EstimatePointSchema = Schema.Struct({
+	id: Schema.String,
+	estimate: Schema.String,
+	key: Schema.optional(Schema.Number),
+	value: Schema.String,
+	description: Schema.optional(Schema.NullOr(Schema.String)),
+	project: Schema.String,
+	workspace: Schema.String,
+});
+export type EstimatePoint = typeof EstimatePointSchema.Type;
+
+export const EstimatePointsResponseSchema = Schema.Array(EstimatePointSchema);
+
 export const ProjectsResponseSchema = Schema.Struct({
 	results: Schema.Array(ProjectSchema),
 });
@@ -122,7 +166,7 @@ export const ModulesResponseSchema = Schema.Struct({
 	results: Schema.Array(ModuleSchema),
 });
 
-export const ModuleIssueSchema = Schema.Struct({
+export const ModuleIssueRelationSchema = Schema.Struct({
 	id: Schema.String,
 	issue: Schema.String,
 	issue_detail: Schema.optional(
@@ -133,6 +177,17 @@ export const ModuleIssueSchema = Schema.Struct({
 		}),
 	),
 });
+
+export const ModuleIssueRawSchema = Schema.Struct({
+	id: Schema.String,
+	sequence_id: Schema.Number,
+	name: Schema.String,
+});
+
+export const ModuleIssueSchema = Schema.Union(
+	ModuleIssueRelationSchema,
+	ModuleIssueRawSchema,
+);
 export type ModuleIssue = typeof ModuleIssueSchema.Type;
 
 export const ModuleIssuesResponseSchema = Schema.Struct({
@@ -199,7 +254,7 @@ export const CommentsResponseSchema = Schema.Struct({
 	results: Schema.Array(CommentSchema),
 });
 
-export const CycleIssueSchema = Schema.Struct({
+export const CycleIssueRelationSchema = Schema.Struct({
 	id: Schema.String,
 	issue: Schema.String,
 	issue_detail: Schema.optional(
@@ -210,6 +265,17 @@ export const CycleIssueSchema = Schema.Struct({
 		}),
 	),
 });
+
+export const CycleIssueRawSchema = Schema.Struct({
+	id: Schema.String,
+	sequence_id: Schema.Number,
+	name: Schema.String,
+});
+
+export const CycleIssueSchema = Schema.Union(
+	CycleIssueRelationSchema,
+	CycleIssueRawSchema,
+);
 export type CycleIssue = typeof CycleIssueSchema.Type;
 
 export const CycleIssuesResponseSchema = Schema.Struct({

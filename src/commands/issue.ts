@@ -1,15 +1,25 @@
-import { Command, Options, Args } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import {
-	IssueSchema,
 	ActivitiesResponseSchema,
-	IssueLinksResponseSchema,
-	IssueLinkSchema,
 	CommentsResponseSchema,
-	WorklogsResponseSchema,
+	IssueLinkSchema,
+	IssueLinksResponseSchema,
+	IssueSchema,
 	WorklogSchema,
+	WorklogsResponseSchema,
 } from "../config.js";
+import { escapeHtmlText } from "../format.js";
+import {
+	type IssueCreatePayload,
+	type IssueUpdatePayload,
+	issueLinkPaths,
+	issueWorklogPaths,
+	requestWithFallback,
+	type WorklogPayload,
+} from "../issue-support.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
 import {
 	findIssueBySeq,
 	getLabelId,
@@ -18,35 +28,10 @@ import {
 	parseIssueRef,
 	resolveProject,
 } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
-import { escapeHtmlText } from "../format.js";
 
 const refArg = Args.text({ name: "ref" }).pipe(
 	Args.withDescription("Issue reference, e.g. PROJ-29"),
 );
-// --- Typed payload interfaces ---
-interface IssueUpdatePayload {
-	state?: string;
-	priority?: string;
-	name?: string;
-	description_html?: string;
-	assignees?: string[];
-	label_ids?: string[];
-}
-
-interface IssueCreatePayload {
-	name: string;
-	priority?: string;
-	state?: string;
-	description_html?: string;
-	assignees?: string[];
-	label_ids?: string[];
-}
-
-interface WorklogPayload {
-	duration: number;
-	description?: string;
-}
 // --- issue get ---
 export function issueGetHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
@@ -155,7 +140,11 @@ export function issueUpdateHandler({
 			`projects/${projectId}/issues/${issue.id}/`,
 			body,
 		);
-		const updated = yield* decodeOrFail(IssueSchema, raw);
+		yield* decodeOrFail(IssueSchema, raw);
+		const refreshedRaw = yield* api.get(
+			`projects/${projectId}/issues/${issue.id}/`,
+		);
+		const updated = yield* decodeOrFail(IssueSchema, refreshedRaw);
 		const stateName =
 			typeof updated.state === "object" ? updated.state.name : updated.state;
 		yield* Console.log(
@@ -219,7 +208,9 @@ const titleArg = Args.text({ name: "title" }).pipe(
 	Args.withDescription("Issue title"),
 );
 const projectRefArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ). Use '@current' for the saved default project.",
+	),
 );
 
 const createPriorityOption = Options.optional(
@@ -300,7 +291,7 @@ export const issueCreate = Command.make(
 	issueCreateHandler,
 ).pipe(
 	Command.withDescription(
-		'Create a new issue in a project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"\n  plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"',
+		'Create a new issue in a project. Use @current to target the saved default project.\n\nExamples:\n  plane issue create PROJ "Migrate Button component"\n  plane issue create @current "Migrate Button component"\n  plane issue create --priority high --state started PROJ "Fix lint pipeline"\n  plane issue create --description "Detailed context here" PROJ "Add dark mode"\n  plane issue create --assignee "Jane Doe" PROJ "Onboarding bug"',
 	),
 );
 // --- issue activity ---
@@ -352,8 +343,10 @@ export function issueLinkListHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* api.get(
-			`projects/${projectId}/issues/${issue.id}/issue-links/`,
+		const raw = yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id),
+			(path) => api.get(path),
+			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const { results } = yield* decodeOrFail(IssueLinksResponseSchema, raw);
 		if (jsonMode) {
@@ -401,10 +394,11 @@ export function issueLinkAddHandler({
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: Record<string, string> = { url };
-		if (Option.isSome(title)) body["title"] = title.value;
-		const raw = yield* api.post(
-			`projects/${projectId}/issues/${issue.id}/issue-links/`,
-			body,
+		if (Option.isSome(title)) body.title = title.value;
+		const raw = yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id),
+			(path) => api.post(path, body),
+			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const link = yield* decodeOrFail(IssueLinkSchema, raw);
 		yield* Console.log(`Link added: ${link.id}  ${link.url}`);
@@ -435,9 +429,14 @@ export function issueLinkRemoveHandler({
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		yield* api.delete(
-			`projects/${projectId}/issues/${issue.id}/issue-links/${linkId}/`,
+		// Resolve the correct base path for issue links via a safe probe,
+		// then delete once so a missing link ID results in a proper not-found error.
+		const basePath = yield* requestWithFallback(
+			issueLinkPaths(projectId, issue.id),
+			(path) => api.get(path).pipe(Effect.as(path)),
+			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
+		yield* api.delete(`${basePath}${linkId}/`);
 		yield* Console.log(`Link ${linkId} removed from ${ref}`);
 	});
 }
@@ -568,8 +567,10 @@ export function issueWorklogsListHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* api.get(
-			`projects/${projectId}/issues/${issue.id}/worklogs/`,
+		const raw = yield* requestWithFallback(
+			issueWorklogPaths(projectId, issue.id),
+			(path) => api.get(path),
+			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const { results } = yield* decodeOrFail(WorklogsResponseSchema, raw);
 		if (jsonMode) {
@@ -626,9 +627,10 @@ export function issueWorklogsAddHandler({
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const body: WorklogPayload = { duration };
 		if (Option.isSome(description)) body.description = description.value;
-		const raw = yield* api.post(
-			`projects/${projectId}/issues/${issue.id}/worklogs/`,
-			body,
+		const raw = yield* requestWithFallback(
+			issueWorklogPaths(projectId, issue.id),
+			(path) => api.post(path, body),
+			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const log = yield* decodeOrFail(WorklogSchema, raw);
 		const hrs = (log.duration / 60).toFixed(1);

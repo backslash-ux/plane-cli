@@ -7,11 +7,10 @@ import {
 	expect,
 	it,
 } from "bun:test";
-import { Effect } from "effect";
-import { http, HttpResponse } from "msw";
+import { Effect, Schema } from "effect";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { api, decodeOrFail } from "@/api";
-import { Schema } from "effect";
 
 const BASE = "http://api-test.local";
 const WS = "testws";
@@ -22,16 +21,16 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterAll(() => server.close());
 
 beforeEach(() => {
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
 });
 
 describe("api.get", () => {
@@ -50,7 +49,7 @@ describe("api.get", () => {
 	});
 
 	it("strips trailing slash from PLANE_HOST", async () => {
-		process.env["PLANE_HOST"] = `${BASE}/`;
+		process.env.PLANE_HOST = `${BASE}/`;
 		server.use(
 			http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 				HttpResponse.json({ results: [] }),

@@ -1,13 +1,22 @@
-import { Command, Args } from "@effect/cli";
+import { Args, Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
-import { CyclesResponseSchema, CycleIssuesResponseSchema } from "../config.js";
-import { resolveProject, parseIssueRef, findIssueBySeq } from "../resolve.js";
-import { jsonMode, xmlMode, toXml } from "../output.js";
+import { CycleIssuesResponseSchema, CyclesResponseSchema } from "../config.js";
+import { jsonMode, toXml, xmlMode } from "../output.js";
+import {
+	findIssueBySeq,
+	parseIssueRef,
+	requireProjectFeature,
+	resolveProject,
+} from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
-	Args.withDescription("Project identifier (e.g. PROJ, WEB, OPS)"),
+	Args.withDescription(
+		"Project identifier (e.g. PROJ, WEB, OPS). Use '@current' for the saved default project.",
+	),
 );
+
+const listProjectArg = projectArg.pipe(Args.withDefault(""));
 
 const cycleIdArg = Args.text({ name: "cycle-id" }).pipe(
 	Args.withDescription("Cycle UUID (from 'plane cycles list PROJECT')"),
@@ -18,6 +27,7 @@ const cycleIdArg = Args.text({ name: "cycle-id" }).pipe(
 export function cyclesListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
 		const { id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "cycle_view");
 		const raw = yield* api.get(`projects/${id}/cycles/`);
 		const { results } = yield* decodeOrFail(CyclesResponseSchema, raw);
 		if (jsonMode) {
@@ -44,11 +54,11 @@ export function cyclesListHandler({ project }: { project: string }) {
 
 export const cyclesList = Command.make(
 	"list",
-	{ project: projectArg },
+	{ project: listProjectArg },
 	cyclesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List cycles for a project. Shows cycle UUID, status, date range, and name.\n\nExample:\n  plane cycles list PROJ",
+		"List cycles for a project. Shows cycle UUID, status, date range, and name. Omit PROJECT to use the saved current project.\n\nExample:\n  plane cycles list PROJ",
 	),
 );
 
@@ -63,6 +73,7 @@ export function cycleIssuesListHandler({
 }) {
 	return Effect.gen(function* () {
 		const { key, id } = yield* resolveProject(project);
+		yield* requireProjectFeature(id, "cycle_view");
 		const raw = yield* api.get(
 			`projects/${id}/cycles/${cycleId}/cycle-issues/`,
 		);
@@ -80,11 +91,15 @@ export function cycleIssuesListHandler({
 			return;
 		}
 		const lines = results.map((ci) => {
+			if ("sequence_id" in ci) {
+				const seq = String(ci.sequence_id).padStart(3, " ");
+				return `${key}-${seq}  ${ci.name}`;
+			}
 			if (ci.issue_detail) {
 				const seq = String(ci.issue_detail.sequence_id).padStart(3, " ");
-				return `${key}-${seq}  ${ci.issue_detail.name}  (${ci.id})`;
+				return `${key}-${seq}  ${ci.issue_detail.name}`;
 			}
-			return `${ci.issue}  (cycle-issue: ${ci.id})`;
+			return `${ci.issue}`;
 		});
 		yield* Console.log(lines.join("\n"));
 	});
@@ -117,6 +132,7 @@ export function cycleIssuesAddHandler({
 }) {
 	return Effect.gen(function* () {
 		const { id: projectId } = yield* resolveProject(project);
+		yield* requireProjectFeature(projectId, "cycle_view");
 		const { seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		yield* api.post(`projects/${projectId}/cycles/${cycleId}/cycle-issues/`, {

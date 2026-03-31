@@ -10,7 +10,7 @@ const THRESHOLDS = {
 console.log("Running tests with coverage...\n")
 
 try {
-  const output = execSync("bun test --coverage 2>&1", { encoding: "utf8" })
+  const output = execSync(`"${process.execPath}" test --coverage 2>&1`, { encoding: "utf8" })
   console.log(output)
 
   const coverageMatch = output.match(/All files\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|/)

@@ -8,7 +8,7 @@ import {
 	it,
 } from "bun:test";
 import { Effect, Option } from "effect";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { _clearProjectCache } from "@/resolve";
 
@@ -18,6 +18,16 @@ const WS = "testws";
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
 ];
+const PROJECT_DETAIL = {
+	id: "proj-acme",
+	identifier: "ACME",
+	name: "Acme Project",
+	module_view: true,
+	cycle_view: true,
+	issue_views_view: true,
+	page_view: true,
+	inbox_view: true,
+};
 const PAGES = [
 	{
 		id: "pg1",
@@ -46,6 +56,9 @@ const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
 	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
+		HttpResponse.json(PROJECT_DETAIL),
+	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/pages/`, () =>
 		HttpResponse.json({ results: PAGES }),
 	),
@@ -60,16 +73,16 @@ afterAll(() => server.close());
 
 beforeEach(() => {
 	_clearProjectCache();
-	process.env["PLANE_HOST"] = BASE;
-	process.env["PLANE_WORKSPACE"] = WS;
-	process.env["PLANE_API_TOKEN"] = "test-token";
+	process.env.PLANE_HOST = BASE;
+	process.env.PLANE_WORKSPACE = WS;
+	process.env.PLANE_API_TOKEN = "test-token";
 });
 
 afterEach(() => {
 	server.resetHandlers();
-	delete process.env["PLANE_HOST"];
-	delete process.env["PLANE_WORKSPACE"];
-	delete process.env["PLANE_API_TOKEN"];
+	delete process.env.PLANE_HOST;
+	delete process.env.PLANE_WORKSPACE;
+	delete process.env.PLANE_API_TOKEN;
 });
 
 describe("pagesList", () => {
@@ -122,6 +135,21 @@ describe("pagesList", () => {
 			console.log = orig;
 		}
 		expect(logs.join("\n")).toBe("No pages");
+	});
+
+	it("returns a definitive error when the page API is unavailable", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/pages/`,
+				() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+			),
+		);
+		const { pagesListHandler } = await import("@/commands/pages");
+		await expect(
+			Effect.runPromise(pagesListHandler({ project: "ACME" })),
+		).rejects.toThrow(
+			"Project pages are not available for ACME on this Plane instance or API version.",
+		);
 	});
 });
 
@@ -364,7 +392,12 @@ describe("pagesDuplicate", () => {
 		server.use(
 			http.post(
 				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/pages/pg1/duplicate/`,
-				() => HttpResponse.json({ ...NEW_PAGE, id: "pg-dup", name: "New Page (copy)" }),
+				() =>
+					HttpResponse.json({
+						...NEW_PAGE,
+						id: "pg-dup",
+						name: "New Page (copy)",
+					}),
 			),
 		);
 		const { pagesDuplicateHandler } = await import("@/commands/pages");
