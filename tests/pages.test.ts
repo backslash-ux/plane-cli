@@ -136,6 +136,21 @@ describe("pagesList", () => {
 		}
 		expect(logs.join("\n")).toBe("No pages");
 	});
+
+	it("returns a definitive error when the page API is unavailable", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/pages/`,
+				() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
+			),
+		);
+		const { pagesListHandler } = await import("@/commands/pages");
+		await expect(
+			Effect.runPromise(pagesListHandler({ project: "ACME" })),
+		).rejects.toThrow(
+			"Project pages are not available for ACME on this Plane instance or API version.",
+		);
+	});
 });
 
 describe("pagesGet", () => {

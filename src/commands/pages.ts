@@ -38,13 +38,34 @@ interface PageUpdatePayload {
 	description_html?: string;
 }
 
+function isNotFoundError(error: Error): boolean {
+	return /^HTTP 404:/.test(error.message);
+}
+
+function mapPageAvailabilityError<A>(
+	effect: Effect.Effect<A, Error>,
+	message: string,
+): Effect.Effect<A, Error> {
+	return effect.pipe(
+		Effect.catchAll((error) => {
+			if (isNotFoundError(error)) {
+				return Effect.fail(new Error(message));
+			}
+			return Effect.fail(error);
+		}),
+	);
+}
+
 // --- pages list ---
 
 export function pagesListHandler({ project }: { project: string }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		const raw = yield* api.get(`projects/${id}/pages/`);
+		const raw = yield* mapPageAvailabilityError(
+			api.get(`projects/${id}/pages/`),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		const { results } = yield* decodeOrFail(PagesResponseSchema, raw);
 		if (jsonMode) {
 			yield* Console.log(JSON.stringify(results, null, 2));
@@ -86,9 +107,12 @@ export function pagesGetHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
+		const raw = yield* mapPageAvailabilityError(
+			api.get(`projects/${id}/pages/${pageId}/`),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(JSON.stringify(page, null, 2));
 	});
@@ -116,13 +140,16 @@ export function pagesCreateHandler({
 	description: Option.Option<string>;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		const body: PageCreatePayload = { name };
 		if (Option.isSome(description)) {
 			body.description_html = description.value;
 		}
-		const raw = yield* api.post(`projects/${id}/pages/`, body);
+		const raw = yield* mapPageAvailabilityError(
+			api.post(`projects/${id}/pages/`, body),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Created page ${page.id}: ${page.name}`);
 	});
@@ -155,12 +182,15 @@ export function pagesUpdateHandler({
 		if (Option.isNone(name) && Option.isNone(description)) {
 			yield* Effect.fail(new Error("provide at least --name or --description"));
 		}
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
 		const body: PageUpdatePayload = {};
 		if (Option.isSome(name)) body.name = name.value;
 		if (Option.isSome(description)) body.description_html = description.value;
-		const raw = yield* api.patch(`projects/${id}/pages/${pageId}/`, body);
+		const raw = yield* mapPageAvailabilityError(
+			api.patch(`projects/${id}/pages/${pageId}/`, body),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Updated page ${page.id}: ${page.name}`);
 	});
@@ -191,9 +221,12 @@ export function pagesDeleteHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		yield* api.delete(`projects/${id}/pages/${pageId}/`);
+		yield* mapPageAvailabilityError(
+			api.delete(`projects/${id}/pages/${pageId}/`),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		yield* Console.log(`Deleted page ${pageId}`);
 	});
 }
@@ -218,9 +251,12 @@ export function pagesArchiveHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		yield* api.post(`projects/${id}/pages/${pageId}/archive/`, {});
+		yield* mapPageAvailabilityError(
+			api.post(`projects/${id}/pages/${pageId}/archive/`, {}),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		yield* Console.log(`Archived page ${pageId}`);
 	});
 }
@@ -245,9 +281,12 @@ export function pagesUnarchiveHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		yield* api.delete(`projects/${id}/pages/${pageId}/archive/`);
+		yield* mapPageAvailabilityError(
+			api.delete(`projects/${id}/pages/${pageId}/archive/`),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		yield* Console.log(`Unarchived page ${pageId}`);
 	});
 }
@@ -272,9 +311,12 @@ export function pagesLockHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		yield* api.post(`projects/${id}/pages/${pageId}/lock/`, {});
+		yield* mapPageAvailabilityError(
+			api.post(`projects/${id}/pages/${pageId}/lock/`, {}),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		yield* Console.log(`Locked page ${pageId}`);
 	});
 }
@@ -299,9 +341,12 @@ export function pagesUnlockHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		yield* api.delete(`projects/${id}/pages/${pageId}/lock/`);
+		yield* mapPageAvailabilityError(
+			api.delete(`projects/${id}/pages/${pageId}/lock/`),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
+		);
 		yield* Console.log(`Unlocked page ${pageId}`);
 	});
 }
@@ -326,11 +371,11 @@ export function pagesDuplicateHandler({
 	pageId: string;
 }) {
 	return Effect.gen(function* () {
-		const { id } = yield* resolveProject(project);
+		const { key, id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "page_view");
-		const raw = yield* api.post(
-			`projects/${id}/pages/${pageId}/duplicate/`,
-			{},
+		const raw = yield* mapPageAvailabilityError(
+			api.post(`projects/${id}/pages/${pageId}/duplicate/`, {}),
+			`Project pages are not available for ${key} on this Plane instance or API version.`,
 		);
 		const page = yield* decodeOrFail(PageSchema, raw);
 		yield* Console.log(`Duplicated page ${page.id}: ${page.name}`);
