@@ -91,11 +91,15 @@ export function cycleIssuesListHandler({
 			return;
 		}
 		const lines = results.map((ci) => {
+			if ("sequence_id" in ci) {
+				const seq = String(ci.sequence_id).padStart(3, " ");
+				return `${key}-${seq}  ${ci.name}`;
+			}
 			if (ci.issue_detail) {
 				const seq = String(ci.issue_detail.sequence_id).padStart(3, " ");
-				return `${key}-${seq}  ${ci.issue_detail.name}  (${ci.id})`;
+				return `${key}-${seq}  ${ci.issue_detail.name}`;
 			}
-			return `${ci.issue}  (cycle-issue: ${ci.id})`;
+			return `${ci.issue}`;
 		});
 		yield* Console.log(lines.join("\n"));
 	});

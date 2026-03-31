@@ -92,9 +92,13 @@ export function moduleIssuesListHandler({
 			return;
 		}
 		const lines = results.map((mi) => {
-			if (mi.issue_detail) {
+			if ("issue_detail" in mi && mi.issue_detail) {
 				const seq = String(mi.issue_detail.sequence_id).padStart(3, " ");
 				return `${key}-${seq}  ${mi.issue_detail.name}  (${mi.id})`;
+			}
+			if ("sequence_id" in mi) {
+				const seq = String(mi.sequence_id).padStart(3, " ");
+				return `${key}-${seq}  ${mi.name}`;
 			}
 			return `${mi.issue}  (module-issue: ${mi.id})`;
 		});
@@ -156,7 +160,7 @@ export const moduleIssuesAdd = Command.make(
 
 const moduleIssueIdArg = Args.text({ name: "module-issue-id" }).pipe(
 	Args.withDescription(
-		"Module-issue join ID (from 'plane modules issues list')",
+		"Module issue identifier from 'plane modules issues list' (legacy join ID or live raw issue ID)",
 	),
 );
 
@@ -191,7 +195,7 @@ export const moduleIssuesRemove = Command.make(
 	moduleIssuesRemoveHandler,
 ).pipe(
 	Command.withDescription(
-		"Remove an issue from a module using the module-issue join ID.\n\nExample:\n  plane modules issues remove PROJ <module-id> <module-issue-id>",
+		"Remove an issue from a module using the identifier returned by 'plane modules issues list'.\n\nExample:\n  plane modules issues remove PROJ <module-id> <module-issue-id>",
 	),
 );
 

@@ -194,12 +194,31 @@ describe("CycleIssueSchema", () => {
 			issue: "i1",
 			issue_detail: { id: "i1", sequence_id: 5, name: "Fix bug" },
 		});
+		if (!("issue" in ci)) {
+			throw new Error("Expected legacy cycle-issue payload");
+		}
 		expect(ci.issue_detail?.sequence_id).toBe(5);
 	});
 
 	it("decodes without detail", async () => {
 		const ci = await decode(CycleIssueSchema, { id: "ci2", issue: "i2" });
+		if (!("issue" in ci)) {
+			throw new Error("Expected legacy cycle-issue payload");
+		}
 		expect(ci.issue).toBe("i2");
+	});
+
+	it("decodes raw issue payloads", async () => {
+		const ci = await decode(CycleIssueSchema, {
+			id: "i3",
+			sequence_id: 9,
+			name: "Ship campaign",
+		});
+		if (!("sequence_id" in ci)) {
+			throw new Error("Expected raw issue payload");
+		}
+		expect(ci.sequence_id).toBe(9);
+		expect(ci.name).toBe("Ship campaign");
 	});
 
 	it("rejects missing issue", async () => {

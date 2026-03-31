@@ -59,17 +59,17 @@ const CYCLES = [
 ];
 const CYCLE_ISSUES = [
 	{
-		id: "ci1",
-		issue: "i1",
-		issue_detail: { id: "i1", sequence_id: 1, name: "Issue One" },
+		id: "i1",
+		sequence_id: 1,
+		name: "Issue One",
 	},
 ];
 const MODULES = [{ id: "mod1", name: "Module Alpha", status: "in-progress" }];
 const MODULE_ISSUES = [
 	{
-		id: "mi1",
-		issue: "i1",
-		issue_detail: { id: "i1", sequence_id: 1, name: "Issue One" },
+		id: "i1",
+		sequence_id: 1,
+		name: "Issue One",
 	},
 ];
 const INTAKE_ISSUES = [
@@ -166,12 +166,16 @@ const server = setupServer(
 		() => HttpResponse.json({ results: ACTIVITIES }),
 	),
 	http.get(
-		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/issue-links/`,
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/links/`,
 		() => HttpResponse.json({ results: LINKS }),
 	),
 	http.get(
 		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/comments/`,
 		() => HttpResponse.json({ results: COMMENTS }),
+	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/work-items/i1/worklogs/`,
+		() => new HttpResponse('{"error":"Page not found."}', { status: 404 }),
 	),
 	http.get(
 		`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/i1/worklogs/`,
@@ -241,7 +245,7 @@ describe("cycleIssuesList --json", () => {
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
-		expect(parsed[0].id).toBe("ci1");
+		expect(parsed[0].id).toBe("i1");
 	});
 });
 
@@ -270,7 +274,8 @@ describe("moduleIssuesList --json", () => {
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
-		expect(parsed[0].id).toBe("mi1");
+		expect(parsed[0].id).toBe("i1");
+		expect(parsed[0].sequence_id).toBe(1);
 	});
 });
 

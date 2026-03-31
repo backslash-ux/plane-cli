@@ -49,9 +49,9 @@ const CYCLES = [
 ];
 const CYCLE_ISSUES = [
 	{
-		id: "ci1",
-		issue: "i1",
-		issue_detail: { id: "i1", sequence_id: 29, name: "Migrate Button" },
+		id: "i1",
+		sequence_id: 29,
+		name: "Migrate Button",
 	},
 ];
 
@@ -159,6 +159,40 @@ describe("cycleIssuesList", () => {
 		expect(output).toContain("ACME-");
 		expect(output).toContain("29");
 		expect(output).toContain("Migrate Button");
+	});
+
+	it("accepts legacy cycle-issue join payloads", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/cycles/cyc1/cycle-issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "ci1",
+								issue: "i1",
+								issue_detail: {
+									id: "i1",
+									sequence_id: 29,
+									name: "Migrate Button",
+								},
+							},
+						],
+					}),
+			),
+		);
+		const { cycleIssuesListHandler } = await import("@/commands/cycles");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				cycleIssuesListHandler({ project: "ACME", cycleId: "cyc1" }),
+			);
+		} finally {
+			console.log = orig;
+		}
+		expect(logs.join("\n")).toContain("Migrate Button");
 	});
 
 	it("falls back to issue UUID without detail", async () => {

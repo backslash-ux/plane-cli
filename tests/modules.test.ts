@@ -43,9 +43,9 @@ const MODULES = [
 ];
 const MODULE_ISSUES = [
 	{
-		id: "mi1",
-		issue: "i1",
-		issue_detail: { id: "i1", sequence_id: 29, name: "Migrate Button" },
+		id: "i1",
+		sequence_id: 29,
+		name: "Migrate Button",
 	},
 ];
 
@@ -176,6 +176,36 @@ describe("moduleIssuesList", () => {
 		expect(output).toContain("ACME-");
 		expect(output).toContain("29");
 		expect(output).toContain("Migrate Button");
+	});
+
+	it("lists raw issue payloads returned by newer Plane APIs", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/modules/mod1/module-issues/`,
+				() =>
+					HttpResponse.json({
+						results: [{ id: "i1", sequence_id: 29, name: "Migrate Button" }],
+					}),
+			),
+		);
+
+		const { moduleIssuesListHandler } = await import("@/commands/modules");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				moduleIssuesListHandler({
+					project: "ACME",
+					moduleId: "mod1",
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		expect(logs.join("\n")).toContain("ACME- 29  Migrate Button");
 	});
 
 	it("falls back to issue UUID when no issue_detail", async () => {
