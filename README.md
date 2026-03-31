@@ -1,6 +1,6 @@
 # plane
 
-[![CI](https://github.com/backslash-ux/plane-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/backslash-ux/plane-cli/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/backslash-ux/plane-cli-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/backslash-ux/plane-cli-cli/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 CLI for the [Plane](https://plane.so) project management API.
 
@@ -31,7 +31,7 @@ This repository is a fork of [aaronshaf/plane-cli](https://github.com/aaronshaf/
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
-bun install -g @backslash-ux/plane
+bun install -g @backslash-ux/plane-cli
 ```
 
 ## Setup
@@ -191,13 +191,13 @@ plane cycles list PROJ --json
 ## Upgrade
 
 ```bash
-bun update -g @backslash-ux/plane
+bun update -g @backslash-ux/plane-cli
 ```
 
 ## Development
 
 ```bash
-git clone https://github.com/backslash-ux/plane-cli
+git clone https://github.com/backslash-ux/plane-cli-cli
 cd plane-cli
 bun install
 

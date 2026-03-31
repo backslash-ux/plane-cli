@@ -8,7 +8,7 @@ This repository publishes from Git tags that match `v*` through [`.github/workfl
 
 Before the first public release, make sure the publication path itself is ready:
 
-1. Verify the npm package name is available and that the publishing account or npm organization has access to `@backslash-ux/plane`.
+1. Verify the npm package name is available and that the publishing account or npm organization has access to `@backslash-ux/plane-cli`.
 2. Enable npm account 2FA for maintainers. For CI publishing, either:
    - keep using the current `NPM_CONFIG_TOKEN` secret with a token that is allowed to publish this package, or
    - migrate the workflow to npm trusted publishing so long-lived tokens are no longer required.
@@ -63,7 +63,7 @@ git push origin vX.Y.Z
 3. Smoke-test installation from the public registry:
 
 ```bash
-bunx @backslash-ux/plane --help
+bunx @backslash-ux/plane-cli --help
 ```
 
 4. If the release changes agent workflows, confirm `README.md`, `SKILL.md`, and `AGENTS.md` guidance still matches the shipped package.

@@ -13,7 +13,7 @@ Earlier project history may predate this file.
 - Public open-source repository baseline with contributor, governance, security, architecture, and release documentation.
 - GitHub issue and pull request templates plus issue intake routing.
 - Stricter repository quality gates covering formatting, file-size limits, and coverage thresholds.
-- Fork-specific package identity and public metadata alignment under `@backslash-ux/plane`.
+- Fork-specific package identity and public metadata alignment under `@backslash-ux/plane-cli`.
 - A versioned root `AGENTS.md` file that provides baseline context for AI coding agents contributing to the repository.
 - `plane labels delete` and `plane modules delete` cleanup commands.
 

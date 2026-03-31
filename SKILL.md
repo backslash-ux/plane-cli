@@ -14,7 +14,7 @@ The `plane` CLI wraps the Plane REST API. It is designed for both human and AI
 agent use. Install it globally with bun:
 
 ```bash
-bun install -g @backslash-ux/plane
+bun install -g @backslash-ux/plane-cli
 ```
 
 ## Configuration
