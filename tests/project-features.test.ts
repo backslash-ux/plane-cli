@@ -278,6 +278,51 @@ describe("feature gates", () => {
 		);
 		expect(agentsContent).toContain("plane projects current");
 	});
+
+	it("succeeds with estimates disabled when estimates endpoint returns 404", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/estimates/`,
+				() =>
+					HttpResponse.json(
+						{ error: "Page not found." },
+						{ status: 404 },
+					),
+			),
+		);
+		const { initHandler } = await import("@/commands/init");
+		const { getLocalProjectContextFilePath } = await import(
+			"@/project-context"
+		);
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		process.chdir(repoDir);
+		promptResponses = ["", "", "", "1"];
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+		try {
+			await Effect.runPromise(
+				initHandler({ global: false, local: true }, "local"),
+			);
+		} finally {
+			console.log = orig;
+		}
+		const output = logs.join("\n");
+		expect(output).toContain("Project helper saved to");
+		expect(output).toContain("States:    2");
+		expect(output).toContain("Labels:    2");
+		expect(output).toContain("Estimate:  disabled");
+		expect(output).not.toContain(
+			"could not load project helper data",
+		);
+		const helperPath = getLocalProjectContextFilePath(repoDir);
+		expect(fs.existsSync(helperPath)).toBe(true);
+		const helper = JSON.parse(fs.readFileSync(helperPath, "utf8")) as {
+			helpers: { estimate: { enabled: boolean } };
+		};
+		expect(helper.helpers.estimate.enabled).toBe(false);
+	});
 });
 
 describe("SKILL.md import into AGENTS.md", () => {

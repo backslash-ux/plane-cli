@@ -263,19 +263,28 @@ function fetchLocalProjectHelperForConfig(
 			`projects/${project.id}/labels/`,
 		);
 
-		let estimate = null;
+		let estimate: import("../config.js").Estimate | null = null;
 		let estimatePoints: readonly import("../config.js").EstimatePoint[] = [];
 		if (detail.estimate) {
-			estimate = yield* fetchDecodedFromConfig(
-				EstimateSchema,
-				config,
-				`projects/${project.id}/estimates/`,
+			const estimateResult = yield* Effect.either(
+				Effect.gen(function* () {
+					const est = yield* fetchDecodedFromConfig(
+						EstimateSchema,
+						config,
+						`projects/${project.id}/estimates/`,
+					);
+					const pts = yield* fetchDecodedFromConfig(
+						EstimatePointsResponseSchema,
+						config,
+						`projects/${project.id}/estimates/${est.id}/estimate-points/`,
+					);
+					return { est, pts };
+				}),
 			);
-			estimatePoints = yield* fetchDecodedFromConfig(
-				EstimatePointsResponseSchema,
-				config,
-				`projects/${project.id}/estimates/${estimate.id}/estimate-points/`,
-			);
+			if (estimateResult._tag === "Right") {
+				estimate = estimateResult.right.est;
+				estimatePoints = estimateResult.right.pts;
+			}
 		}
 
 		return {
