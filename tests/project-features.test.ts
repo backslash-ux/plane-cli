@@ -33,7 +33,7 @@ const PROJECT_DETAIL = {
 	cycle_view: false,
 	issue_views_view: true,
 	page_view: true,
-	inbox_view: true,
+	intake_view: true,
 	estimate: "est1",
 };
 
@@ -207,6 +207,11 @@ describe("feature gates", () => {
 		expect(agentsContent).toContain("## Plane Project Context");
 		expect(agentsContent).toContain("Plane project ACME (Acme Project)");
 		expect(agentsContent).toContain("./.plane/project-context.json");
+		expect(agentsContent).toContain(
+			"Prefer the `plane` CLI from this repository root for Plane project work instead of direct API calls.",
+		);
+		expect(agentsContent).toContain("plane issues list @current");
+		expect(agentsContent).toContain("plane issue get ACME-12");
 		const helper = JSON.parse(fs.readFileSync(helperPath, "utf8")) as {
 			features: { estimates: boolean };
 			helpers: {
@@ -268,5 +273,9 @@ describe("feature gates", () => {
 		expect(agentsContent).toContain(
 			"Read `./.plane/project-context.json` before planning or applying Plane project changes.",
 		);
+		expect(agentsContent).toContain(
+			"If the shell may contain inherited `PLANE_*` variables, clear them before relying on `./.plane/config.json`.",
+		);
+		expect(agentsContent).toContain("plane projects current");
 	});
 });
