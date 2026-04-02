@@ -8,14 +8,12 @@ import type {
 	StatsResult,
 	WorkspaceStatsResult,
 } from "../config.js";
-import {
-	PaginatedIssuesResponseSchema,
-	ProjectsResponseSchema,
-} from "../config.js";
+import { PaginatedIssuesResponseSchema } from "../config.js";
 import { formatStats } from "../format.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
 import {
 	getMemberId,
+	listProjects,
 	requireProjectFeature,
 	resolveCycle,
 	resolveModule,
@@ -54,6 +52,13 @@ const assigneeOption = Options.optional(Options.text("assignee")).pipe(
 	Options.withDescription(
 		"Scope stats to an assignee (display name, email, or member UUID)",
 	),
+);
+
+const includeArchivedOption = Options.boolean("include-archived").pipe(
+	Options.withDescription(
+		"Include archived projects when PROJECT is 'workspace'",
+	),
+	Options.withDefault(false),
 );
 
 const EMPTY_STATE_COUNTS: Record<string, number> = {
@@ -316,12 +321,13 @@ function getScopedProjectIssues(
 
 function workspaceStatsHandler({
 	period,
+	includeArchived,
 }: {
 	period?: StatsPeriod;
+	includeArchived: boolean;
 }): Effect.Effect<void, Error> {
 	return Effect.gen(function* () {
-		const raw = yield* api.get("projects/");
-		const { results } = yield* decodeOrFail(ProjectsResponseSchema, raw);
+		const results = yield* listProjects({ includeArchived });
 		const projectStats: StatsResult[] = [];
 		const skippedProjects: string[] = [];
 
@@ -363,6 +369,7 @@ export function statsHandler({
 	cycle,
 	module,
 	assignee,
+	includeArchived,
 }: {
 	project: string;
 	since: Option.Option<string>;
@@ -370,6 +377,7 @@ export function statsHandler({
 	cycle: Option.Option<string>;
 	module: Option.Option<string>;
 	assignee: Option.Option<string>;
+	includeArchived?: boolean;
 }) {
 	return Effect.gen(function* () {
 		const period = yield* getPeriod(since, until);
@@ -385,7 +393,10 @@ export function statsHandler({
 					),
 				);
 			}
-			return yield* workspaceStatsHandler({ period });
+			return yield* workspaceStatsHandler({
+				period,
+				includeArchived: includeArchived ?? false,
+			});
 		}
 
 		const { key, id } = yield* resolveProject(project);
@@ -404,11 +415,12 @@ export const statsList = Command.make(
 		cycle: cycleOption,
 		module: moduleOption,
 		assignee: assigneeOption,
+		includeArchived: includeArchivedOption,
 	},
 	statsHandler,
 ).pipe(
 	Command.withDescription(
-		"Show aggregated issue statistics for a project or for the whole workspace using PROJECT='workspace'.\n\nBreaks down issues by state group, priority, assignment, and period counts.\nAll aggregation is client-side — no server analytics endpoints required.\n\nFilters:\n  --since DATE   Count created/completed issues on or after DATE (YYYY-MM-DD)\n  --until DATE   Count created/completed issues before DATE (YYYY-MM-DD)\n  --cycle NAME   Scope to a specific cycle (project stats only)\n  --module NAME  Scope to a specific module (project stats only)\n  --assignee WHO Scope to issues assigned to a member (project stats only)\n\nNote: @effect/cli requires command options before PROJECT, so use 'plane stats --since 2026-04-01 PROJ'.",
+		"Show aggregated issue statistics for a project or for the whole workspace using PROJECT='workspace'.\n\nBreaks down issues by state group, priority, assignment, and period counts.\nAll aggregation is client-side — no server analytics endpoints required. Workspace aggregation excludes archived projects by default; add --include-archived to include them.\n\nFilters:\n  --since DATE            Count created/completed issues on or after DATE (YYYY-MM-DD)\n  --until DATE            Count created/completed issues before DATE (YYYY-MM-DD)\n  --cycle NAME            Scope to a specific cycle (project stats only)\n  --module NAME           Scope to a specific module (project stats only)\n  --assignee WHO          Scope to issues assigned to a member (project stats only)\n  --include-archived      Include archived projects in workspace aggregation\n\nNote: @effect/cli requires command options before PROJECT, so use 'plane stats --since 2026-04-01 PROJ'.",
 	),
 );
 

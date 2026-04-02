@@ -47,6 +47,7 @@ For path-local overrides in the current project directory:
 
 ```bash
 plane init --local
+plane init --local --include-archived
 plane . init
 ```
 
@@ -58,6 +59,7 @@ environment variables > nearest .plane/config.json > ~/.config/plane/config.json
 
 The local config is discovered from the current working directory upward, so a config written at the repo root applies inside nested folders unless a deeper `.plane/config.json` overrides it.
 When you run `plane init --local`, the CLI also reads the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands return explicit feature-disabled errors when the project has them turned off.
+Project lists and project-selection prompts exclude archived projects by default. Add `--include-archived` to `plane init`, `plane . init`, `plane projects list`, or `plane stats ... workspace` when you intentionally want archived projects included.
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse what already exists instead of inventing duplicates.
 If `AGENTS.md` already exists in that directory, `plane init --local` appends a managed Plane project context section at the bottom without removing the existing content. If it does not exist, the CLI creates it. The managed section points agents at `.plane/project-context.json`, tells them to prefer the repo-local `plane` CLI for Plane work, and includes a small command pattern for clearing inherited `PLANE_*` overrides before using the local config.
 
@@ -74,6 +76,7 @@ To persist a current project after setup:
 
 ```bash
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects use PROJ --global
@@ -94,6 +97,7 @@ Project-scoped feature availability still depends on the target Plane project. O
 ```bash
 # Projects
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects current
@@ -176,6 +180,7 @@ plane stats --cycle "Sprint 1" PROJ
 plane stats --module "Sprint 3" PROJ
 plane stats --assignee Alice PROJ
 plane stats workspace
+plane stats --include-archived workspace
 plane stats --since 2025-01-01 workspace --json
 ```
 

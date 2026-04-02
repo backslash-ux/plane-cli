@@ -148,6 +148,16 @@ describe("ProjectSchema", () => {
 		});
 		expect(p.description).toBe("desc");
 	});
+
+	it("accepts archived_at metadata", async () => {
+		const p = await decode(ProjectSchema, {
+			id: "p1",
+			identifier: "ACME",
+			name: "Acme Project",
+			archived_at: "2025-01-01T00:00:00Z",
+		});
+		expect(p.archived_at).toBe("2025-01-01T00:00:00Z");
+	});
 });
 
 describe("ProjectsResponseSchema", () => {

@@ -23,6 +23,12 @@ const ORIGINAL_CWD = process.cwd();
 
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
+	{
+		id: "proj-old",
+		identifier: "OLD",
+		name: "Old Project",
+		archived_at: "2025-01-01T00:00:00Z",
+	},
 ];
 
 const PROJECT_DETAIL = {
@@ -185,6 +191,7 @@ describe("feature gates", () => {
 		}
 
 		const output = logs.join("\n");
+		expect(output).not.toContain("OLD  Old Project");
 		expect(output).toContain("Project feature flags:");
 		expect(output).toContain("Cycles: disabled");
 		expect(output).toContain("Modules: enabled");
@@ -230,6 +237,32 @@ describe("feature gates", () => {
 		);
 		expect(helper.helpers.estimate.enabled).toBe(true);
 		expect(helper.helpers.estimate.pointsByValue["1"].id).toBe("ep1");
+	});
+
+	it("includes archived projects in init selection when requested", async () => {
+		const { initHandler } = await import("@/commands/init");
+		const repoDir = path.join(tempHome, "repo");
+		fs.mkdirSync(repoDir, { recursive: true });
+		process.chdir(repoDir);
+		promptResponses = ["", "", "", "1"];
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				initHandler(
+					{ global: false, local: true, includeArchived: true },
+					"local",
+				),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		const output = logs.join("\n");
+		expect(output).toContain("1. ACME  Acme Project");
+		expect(output).toContain("2. OLD  Old Project  (archived)");
 	});
 
 	it("preserves user AGENTS content and refreshes the managed project section", async () => {

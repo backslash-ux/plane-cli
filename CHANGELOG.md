@@ -19,6 +19,7 @@ Earlier project history may predate this file.
 
 ### Changed
 
+- **Archived project defaults.** Project-listing contexts now exclude archived projects by default, including interactive init selection and workspace stats aggregation. Use `--include-archived` to opt back in when needed.
 - Extracted issue link, comments, and worklogs sub-commands into `src/commands/issue-sub.ts` to keep `issue.ts` under the 700-line file-size limit.
 
 ## 1.1.0

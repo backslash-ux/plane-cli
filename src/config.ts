@@ -128,6 +128,7 @@ export const ProjectSchema = Schema.Struct({
 	identifier: Schema.String,
 	name: Schema.String,
 	description: Schema.optional(Schema.NullOr(Schema.String)),
+	archived_at: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type Project = typeof ProjectSchema.Type;
 
@@ -149,6 +150,12 @@ export function isProjectIntakeEnabled(
 	project: Pick<ProjectDetail, "inbox_view" | "intake_view">,
 ): boolean {
 	return (project.inbox_view || project.intake_view) ?? false;
+}
+
+export function isProjectArchived(
+	project: Pick<Project, "archived_at">,
+): boolean {
+	return project.archived_at != null;
 }
 
 export const EstimateSchema = Schema.Struct({

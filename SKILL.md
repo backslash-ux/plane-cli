@@ -31,6 +31,7 @@ For path-local overrides in the current directory:
 
 ```bash
 plane init --local
+plane init --local --include-archived
 plane . init
 ```
 
@@ -43,6 +44,7 @@ PLANE_* environment variables > nearest .plane/config.json > ~/.config/plane/con
 `plane init --local` also fetches the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands fail with explicit feature-disabled errors when the project has them turned off.
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse current project conventions instead of creating duplicates.
 It also creates or updates `AGENTS.md` in that directory with a managed Plane context section at the bottom so AI agents know to read `.plane/project-context.json`, prefer the repo-local `plane` CLI, and clear inherited `PLANE_*` overrides before relying on local project config.
+Project lists and project-selection prompts exclude archived projects by default. Add `--include-archived` to `plane init`, `plane . init`, `plane projects list`, or `plane stats ... workspace` when you intentionally need archived projects included.
 
 Or set environment variables (override saved config):
 
@@ -57,6 +59,7 @@ You can also save a current project explicitly:
 
 ```bash
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects use PROJ --global
@@ -112,6 +115,7 @@ plane modules list PROJ --xml
 
 ```bash
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects current
@@ -274,11 +278,12 @@ plane stats --cycle "Sprint 1" PROJ
 plane stats --module "Sprint 3" PROJ
 plane stats --assignee Alice PROJ
 plane stats workspace
+plane stats --include-archived workspace
 plane stats --since 2025-01-01 workspace --json
 plane stats workspace --xml
 ```
 
-Aggregates issues client-side by state group, priority, assignment, and period counts. Supports `--since`/`--until` date filtering, cycle/module scoping, assignee filtering, and the special `workspace` target for cross-project totals. `--json` returns a structured object with `total_issues`, `by_state_group`, `by_priority`, `created_in_range`, `completed_in_range`, `assigned`, and `unassigned` counts.
+Aggregates issues client-side by state group, priority, assignment, and period counts. Supports `--since`/`--until` date filtering, cycle/module scoping, assignee filtering, and the special `workspace` target for cross-project totals. Workspace stats exclude archived projects by default; add `--include-archived` to opt in. `--json` returns a structured object with `total_issues`, `by_state_group`, `by_priority`, `created_in_range`, `completed_in_range`, `assigned`, and `unassigned` counts.
 
 For `plane stats`, command-specific options must come before `PROJ` or `workspace` because of `@effect/cli` parsing rules. Workspace aggregation skips projects that return `403` for issue listing and reports them in the output.
 

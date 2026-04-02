@@ -5,6 +5,7 @@ import { decodeOrFail } from "../api.js";
 import {
 	EstimatePointsResponseSchema,
 	EstimateSchema,
+	isProjectArchived,
 	isProjectIntakeEnabled,
 	LabelsResponseSchema,
 	ProjectDetailSchema,
@@ -178,16 +179,36 @@ const localOption = Options.boolean("local").pipe(
 	Options.withDefault(false),
 );
 
-function fetchProjectsForConfig(config: {
-	host: string;
-	workspace: string;
-	token: string;
-}) {
+const includeArchivedOption = Options.boolean("include-archived").pipe(
+	Options.withDescription(
+		"Include archived projects in interactive project lists",
+	),
+	Options.withDefault(false),
+);
+
+function fetchProjectsForConfig(
+	config: {
+		host: string;
+		workspace: string;
+		token: string;
+	},
+	{
+		includeArchived = false,
+	}: {
+		includeArchived?: boolean;
+	} = {},
+) {
 	return fetchDecodedFromConfig(
 		ProjectsResponseSchema,
 		config,
 		"projects/",
-	).pipe(Effect.map(({ results }) => results));
+	).pipe(
+		Effect.map(({ results }) =>
+			includeArchived
+				? results
+				: results.filter((project) => !isProjectArchived(project)),
+		),
+	);
 }
 
 function requestJsonFromConfig(
@@ -319,7 +340,11 @@ function summarizeProjectFeatures(project: {
 }
 
 export function initHandler(
-	{ global, local }: { global: boolean; local: boolean },
+	{
+		global,
+		local,
+		includeArchived,
+	}: { global: boolean; local: boolean; includeArchived?: boolean },
 	defaultScope: ConfigScope = "global",
 ) {
 	return Effect.gen(function* () {
@@ -345,7 +370,12 @@ export function initHandler(
 		let mergedWorkspace = "";
 		let mergedToken = "";
 		let projectsResult: import("effect").Either.Either<
-			ReadonlyArray<{ id: string; identifier: string; name: string }>,
+			ReadonlyArray<{
+				id: string;
+				identifier: string;
+				name: string;
+				archived_at?: string | null;
+			}>,
 			Error
 		>;
 
@@ -408,11 +438,14 @@ export function initHandler(
 			}
 
 			projectsResult = yield* Effect.either(
-				fetchProjectsForConfig({
-					host: normalizedHost,
-					workspace: mergedWorkspace,
-					token: mergedToken,
-				}),
+				fetchProjectsForConfig(
+					{
+						host: normalizedHost,
+						workspace: mergedWorkspace,
+						token: mergedToken,
+					},
+					{ includeArchived: includeArchived ?? false },
+				),
 			);
 			if (projectsResult._tag === "Right" && projectsResult.right.length > 0) {
 				yield* Console.log("\nAvailable projects:");
@@ -420,7 +453,7 @@ export function initHandler(
 					projectsResult.right
 						.map(
 							(project, index) =>
-								`${index + 1}. ${project.identifier}  ${project.name}`,
+								`${index + 1}. ${project.identifier}  ${project.name}${isProjectArchived(project) ? "  (archived)" : ""}`,
 						)
 						.join("\n"),
 				);
@@ -597,18 +630,24 @@ export function initHandler(
 
 export const init = Command.make(
 	"init",
-	{ global: globalOption, local: localOption },
+	{
+		global: globalOption,
+		local: localOption,
+		includeArchived: includeArchivedOption,
+	},
 	(options) => initHandler(options, "global"),
 ).pipe(
 	Command.withDescription(
-		"Interactive setup. Defaults to global config, supports --global/-g and --local/-l, and can save an optional current-project override.",
+		"Interactive setup. Defaults to global config, supports --global/-g and --local/-l, and can save an optional current-project override. Project selection excludes archived projects by default; add --include-archived to include them.",
 	),
 );
 
-export const localInit = Command.make("init", {}, () =>
-	initHandler({ global: false, local: true }, "local"),
+export const localInit = Command.make(
+	"init",
+	{ includeArchived: includeArchivedOption },
+	(options) => initHandler({ global: false, local: true, ...options }, "local"),
 ).pipe(
 	Command.withDescription(
-		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, updates AGENTS.md with project-context guidance for AI agents, and optionally imports the SKILL.md CLI usage guide into AGENTS.md.",
+		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, updates AGENTS.md with project-context guidance for AI agents, and optionally imports the SKILL.md CLI usage guide into AGENTS.md. Project selection excludes archived projects by default; add --include-archived to include them.",
 	),
 );

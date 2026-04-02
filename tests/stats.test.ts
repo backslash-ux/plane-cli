@@ -20,6 +20,12 @@ const WS = "testws";
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme" },
 	{ id: "proj-web", identifier: "WEB", name: "Website" },
+	{
+		id: "proj-old",
+		identifier: "OLD",
+		name: "Old Project",
+		archived_at: "2025-01-01T00:00:00Z",
+	},
 ];
 const PROJECT_DETAILS = {
 	"proj-acme": {
@@ -110,6 +116,19 @@ const WEB_ISSUES = [
 	},
 ];
 
+const OLD_ISSUES = [
+	{
+		id: "o1",
+		sequence_id: 1,
+		name: "Archived cleanup",
+		priority: "low",
+		state: { id: "s7", name: "Done", group: "completed" },
+		assignees: [],
+		created_at: "2024-12-10T10:00:00Z",
+		completed_at: "2024-12-12T10:00:00Z",
+	},
+];
+
 const MEMBERS = [
 	{ id: "m-alice", display_name: "Alice", email: "alice@example.com" },
 	{ id: "m-bob", display_name: "Bob", email: "bob@example.com" },
@@ -195,6 +214,14 @@ const server = setupServer(
 		({ request }) =>
 			paginatedIssuesResponse(
 				WEB_ISSUES,
+				new URL(request.url).searchParams.get("cursor"),
+			),
+	),
+	http.get(
+		`${BASE}/api/v1/workspaces/${WS}/projects/proj-old/issues/`,
+		({ request }) =>
+			paginatedIssuesResponse(
+				OLD_ISSUES,
 				new URL(request.url).searchParams.get("cursor"),
 			),
 	),
@@ -415,6 +442,28 @@ describe("stats command", () => {
 		expect(output).toContain("Projects:");
 		expect(output).toContain("ACME: total=4, created=4, completed=1");
 		expect(output).toContain("WEB: total=2, created=2, completed=1");
+		expect(output).not.toContain("OLD:");
+	});
+
+	it("includes archived projects in workspace aggregation when requested", async () => {
+		const { statsHandler } = await import("@/commands/stats");
+		const output = await captureLogs(() =>
+			Effect.runPromise(
+				statsHandler({
+					project: "workspace",
+					since: Option.none(),
+					until: Option.none(),
+					cycle: Option.none(),
+					module: Option.none(),
+					assignee: Option.none(),
+					includeArchived: true,
+				}),
+			),
+		);
+
+		expect(output).toContain("Workspace testws Stats");
+		expect(output).toContain("Total issues:    7");
+		expect(output).toContain("OLD: total=1, created=1, completed=1");
 	});
 
 	it("rejects project-only filters for workspace aggregation", async () => {
