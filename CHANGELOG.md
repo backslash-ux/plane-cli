@@ -10,6 +10,7 @@ Earlier project history may predate this file.
 
 ### Added
 
+- **Project Stats & Analytics.** `plane stats` aggregates issues by state group, priority, assignment, and period counts. Supports `--since`/`--until` date windows, `--cycle`/`--module` scoping, `--assignee` filtering, and workspace-wide aggregation via `plane stats workspace`. Outputs human-readable summaries or structured data via `--json`/`--xml`. All aggregation is client-side with paginated issue fetches, and workspace mode skips inaccessible projects while reporting which ones were skipped.
 - **Issue Data Visibility.** `plane issue get` and `plane issues list --json` now include `start_date`, `target_date`, `completed_at`, `created_at`, `updated_at`, `estimate_point`, and full label objects (with `id`, `name`, `color`). The API expand was broadened from `state` to `state,labels`.
 - **Issue Attribute Writing.** `plane issue create` and `plane issue update` support new flags: `--start-date`, `--target-date` (alias `--due-date`), `--estimate`, `--cycle` (name or UUID), and `--module` (name or UUID). `--label` can now be passed multiple times for multi-label assignment.
 - **Advanced Issue Filtering.** `plane issues list` supports `--no-assignee`, `--stale <days>` (issues not updated in N+ days), and `--cycle <name|UUID>` filters.

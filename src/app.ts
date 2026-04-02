@@ -11,6 +11,7 @@ import { modules } from "./commands/modules.js";
 import { pages } from "./commands/pages.js";
 import { projects } from "./commands/projects.js";
 import { states } from "./commands/states.js";
+import { stats } from "./commands/stats.js";
 
 const plane = Command.make("plane").pipe(
 	Command.withDescription(
@@ -63,6 +64,8 @@ ALL SUBCOMMANDS
   intake              list | accept | reject
   pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
   states list         List workflow states for a project
+  stats               Aggregated issue statistics with period counts; use
+                      'workspace' for cross-project totals
   labels              list | create | delete
   members list        List workspace members
 
@@ -87,6 +90,7 @@ FOR AI AGENTS / BOTS
 		issues,
 		issue,
 		states,
+		stats,
 		labels,
 		members,
 		cycles,

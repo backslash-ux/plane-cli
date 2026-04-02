@@ -167,7 +167,19 @@ plane states list PROJ
 plane labels list PROJ
 plane labels delete PROJ bug
 plane members list
+
+# Stats
+plane stats
+plane stats PROJ
+plane stats --since 2025-01-01 --until 2025-02-01 PROJ
+plane stats --cycle "Sprint 1" PROJ
+plane stats --module "Sprint 3" PROJ
+plane stats --assignee Alice PROJ
+plane stats workspace
+plane stats --since 2025-01-01 workspace --json
 ```
+
+For `plane stats`, command-specific options such as `--since`, `--until`, `--cycle`, `--module`, and `--assignee` must come before the `PROJECT` argument or the special `workspace` keyword because of `@effect/cli` parsing rules. `--json` and `--xml` still work as global output flags. Workspace aggregation skips projects that return `403` for issue listing and reports them in the output.
 
 Project identifiers: short strings like `PROJ`, `WEB`. Issue refs: `PROJ-29`, `WEB-5`.
 

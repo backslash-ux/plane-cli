@@ -45,6 +45,43 @@ export const IssuesResponseSchema = Schema.Struct({
 	results: Schema.Array(IssueSchema),
 });
 
+export const PaginatedIssuesResponseSchema = Schema.Struct({
+	results: Schema.Array(IssueSchema),
+	next_cursor: Schema.optional(Schema.NullOr(Schema.String)),
+	next_page_results: Schema.optional(Schema.Boolean),
+});
+
+export interface StatsPeriod {
+	since?: string;
+	until?: string;
+}
+
+export interface StatsResult {
+	project: string;
+	period?: StatsPeriod;
+	total_issues: number;
+	by_state_group: Record<string, number>;
+	by_priority: Record<string, number>;
+	created_in_range: number;
+	completed_in_range: number;
+	assigned: number;
+	unassigned: number;
+}
+
+export interface WorkspaceStatsResult {
+	workspace: string;
+	period?: StatsPeriod;
+	total_issues: number;
+	by_state_group: Record<string, number>;
+	by_priority: Record<string, number>;
+	created_in_range: number;
+	completed_in_range: number;
+	assigned: number;
+	unassigned: number;
+	projects: StatsResult[];
+	skipped_projects?: string[];
+}
+
 export const LabelSchema = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,

@@ -3,9 +3,9 @@ name: plane-cli
 description: >
   Use when working with Plane project management via the `plane` CLI. Covers
   listing/creating/updating/deleting issues, managing cycles, modules, pages,
-  intake, comments, worklogs, links, states, labels, and members. Works with
-  any Plane instance (cloud or self-hosted). Supports structured --xml/--json
-  output for AI agents.
+  intake, comments, worklogs, links, states, labels, members, and project
+  stats/analytics. Works with any Plane instance (cloud or self-hosted).
+  Supports structured --xml/--json output for AI agents.
 ---
 
 # Plane CLI Skill Guide
@@ -91,6 +91,7 @@ All list commands support `--xml` and `--json` flags.
 plane projects list --xml
 plane issues list PROJ --xml
 plane issues list PROJ --state started --xml
+plane stats --json PROJ
 plane states list PROJ --xml
 plane labels list PROJ --xml
 plane members list --xml
@@ -260,6 +261,26 @@ plane members list --xml
 ```
 
 Members are workspace-scoped. This command does not take a project argument.
+
+---
+
+## Stats (analytics)
+
+```bash
+plane stats
+plane stats PROJ
+plane stats --since 2025-01-01 --until 2025-02-01 PROJ
+plane stats --cycle "Sprint 1" PROJ
+plane stats --module "Sprint 3" PROJ
+plane stats --assignee Alice PROJ
+plane stats workspace
+plane stats --since 2025-01-01 workspace --json
+plane stats workspace --xml
+```
+
+Aggregates issues client-side by state group, priority, assignment, and period counts. Supports `--since`/`--until` date filtering, cycle/module scoping, assignee filtering, and the special `workspace` target for cross-project totals. `--json` returns a structured object with `total_issues`, `by_state_group`, `by_priority`, `created_in_range`, `completed_in_range`, `assigned`, and `unassigned` counts.
+
+For `plane stats`, command-specific options must come before `PROJ` or `workspace` because of `@effect/cli` parsing rules. Workspace aggregation skips projects that return `403` for issue listing and reports them in the output.
 
 ---
 
