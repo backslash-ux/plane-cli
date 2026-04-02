@@ -1,8 +1,10 @@
 import { Effect } from "effect";
 import { api, decodeOrFail } from "./api.js";
-import type { Issue, ProjectDetail } from "./config.js";
+import type { Issue, Project, ProjectDetail } from "./config.js";
 import {
+	CyclesResponseSchema,
 	IssuesResponseSchema,
+	isProjectArchived,
 	isProjectIntakeEnabled,
 	LabelsResponseSchema,
 	MembersResponseSchema,
@@ -14,7 +16,14 @@ import {
 import { getConfig } from "./user-config.js";
 
 // Cache project list within a process invocation
-let _projectCache: Record<string, string> | null = null;
+let _projectListCache: ReadonlyArray<Project> | null = null;
+let _projectCache: {
+	active: Record<string, string> | null;
+	all: Record<string, string> | null;
+} = {
+	active: null,
+	all: null,
+};
 let _projectDetailCache: Record<string, ProjectDetail> | null = null;
 
 type ProjectFeatureKey =
@@ -68,20 +77,63 @@ function getConfiguredProject(identifier: string): string {
 
 /** Clear the project cache — for use in tests only */
 export function _clearProjectCache(): void {
-	_projectCache = null;
+	_projectListCache = null;
+	_projectCache = { active: null, all: null };
 	_projectDetailCache = null;
 }
 
-function getProjectMap(): Effect.Effect<Record<string, string>, Error> {
-	if (_projectCache) return Effect.succeed(_projectCache);
+function getProjects({
+	includeArchived = false,
+}: {
+	includeArchived?: boolean;
+} = {}): Effect.Effect<ReadonlyArray<Project>, Error> {
+	if (_projectListCache) {
+		return Effect.succeed(
+			includeArchived
+				? _projectListCache
+				: _projectListCache.filter((project) => !isProjectArchived(project)),
+		);
+	}
 	return Effect.gen(function* () {
 		const raw = yield* api.get("projects/");
 		const { results } = yield* decodeOrFail(ProjectsResponseSchema, raw);
-		_projectCache = Object.fromEntries(
-			results.map((p) => [p.identifier.toUpperCase(), p.id]),
-		);
-		return _projectCache;
+		_projectListCache = results;
+		return includeArchived
+			? results
+			: results.filter((project) => !isProjectArchived(project));
 	});
+}
+
+function getProjectMap({
+	includeArchived = true,
+}: {
+	includeArchived?: boolean;
+} = {}): Effect.Effect<Record<string, string>, Error> {
+	const cacheKey = includeArchived ? "all" : "active";
+	const cached = _projectCache[cacheKey];
+	if (cached) {
+		return Effect.succeed(cached);
+	}
+	return getProjects({ includeArchived }).pipe(
+		Effect.map((projects) => {
+			const map = Object.fromEntries(
+				projects.map((project) => [
+					project.identifier.toUpperCase(),
+					project.id,
+				]),
+			);
+			_projectCache[cacheKey] = map;
+			return map;
+		}),
+	);
+}
+
+export function listProjects({
+	includeArchived = false,
+}: {
+	includeArchived?: boolean;
+} = {}): Effect.Effect<ReadonlyArray<Project>, Error> {
+	return getProjects({ includeArchived });
 }
 
 function getProjectDetail(
@@ -136,9 +188,12 @@ export function requireProjectFeature(
 
 export function resolveProject(
 	identifier: string,
+	options?: { includeArchived?: boolean },
 ): Effect.Effect<{ key: string; id: string }, Error> {
 	const key = getConfiguredProject(identifier).toUpperCase();
-	return getProjectMap().pipe(
+	return getProjectMap({
+		includeArchived: options?.includeArchived ?? true,
+	}).pipe(
 		Effect.flatMap((map) => {
 			const id = map[key];
 			if (!id) {
@@ -263,5 +318,22 @@ export function resolveModule(
 		if (!module)
 			return yield* Effect.fail(new Error(`Module not found: ${nameOrId}`));
 		return { id: module.id, name: module.name };
+	});
+}
+
+export function resolveCycle(
+	projectId: string,
+	nameOrId: string,
+): Effect.Effect<{ id: string; name: string }, Error> {
+	return Effect.gen(function* () {
+		const raw = yield* api.get(`projects/${projectId}/cycles/`);
+		const { results } = yield* decodeOrFail(CyclesResponseSchema, raw);
+		const lower = nameOrId.toLowerCase();
+		const cycle = results.find(
+			(c) => c.id === nameOrId || c.name.toLowerCase() === lower,
+		);
+		if (!cycle)
+			return yield* Effect.fail(new Error(`Cycle not found: ${nameOrId}`));
+		return { id: cycle.id, name: cycle.name };
 	});
 }

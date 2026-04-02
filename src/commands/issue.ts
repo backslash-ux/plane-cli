@@ -1,23 +1,11 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
-import {
-	ActivitiesResponseSchema,
-	CommentsResponseSchema,
-	IssueLinkSchema,
-	IssueLinksResponseSchema,
-	IssueSchema,
-	WorklogSchema,
-	WorklogsResponseSchema,
-} from "../config.js";
+import { ActivitiesResponseSchema, IssueSchema } from "../config.js";
 import { escapeHtmlText } from "../format.js";
-import {
-	type IssueCreatePayload,
-	type IssueUpdatePayload,
-	issueLinkPaths,
-	issueWorklogPaths,
-	requestWithFallback,
-	type WorklogPayload,
+import type {
+	IssueCreatePayload,
+	IssueUpdatePayload,
 } from "../issue-support.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
 import {
@@ -26,8 +14,26 @@ import {
 	getMemberId,
 	getStateId,
 	parseIssueRef,
+	requireProjectFeature,
+	resolveCycle,
+	resolveModule,
 	resolveProject,
 } from "../resolve.js";
+import { issueComments, issueLink, issueWorklogs } from "./issue-sub.js";
+
+export {
+	issueCommentDeleteHandler,
+	issueComments,
+	issueCommentsListHandler,
+	issueCommentUpdateHandler,
+	issueLink,
+	issueLinkAddHandler,
+	issueLinkListHandler,
+	issueLinkRemoveHandler,
+	issueWorklogs,
+	issueWorklogsAddHandler,
+	issueWorklogsListHandler,
+} from "./issue-sub.js";
 
 const refArg = Args.text({ name: "ref" }).pipe(
 	Args.withDescription("Issue reference, e.g. PROJ-29"),
@@ -71,13 +77,35 @@ const assigneeOption = Options.optional(Options.text("assignee")).pipe(
 	Options.withDescription("Assign to a member (display name, email, or UUID)"),
 );
 
-const labelOption = Options.optional(Options.text("label")).pipe(
-	Options.withDescription("Set issue label by name"),
+const labelOption = Options.repeated(Options.text("label")).pipe(
+	Options.withDescription("Set issue label(s) by name (repeatable)"),
 );
 
 const noAssigneeOption = Options.boolean("no-assignee").pipe(
 	Options.withDescription("Clear all assignees"),
 	Options.withDefault(false),
+);
+
+const startDateOption = Options.optional(Options.text("start-date")).pipe(
+	Options.withDescription("Start date (YYYY-MM-DD)"),
+);
+
+const targetDateOption = Options.optional(
+	Options.text("target-date").pipe(Options.withAlias("due-date")),
+).pipe(Options.withDescription("Target/due date (YYYY-MM-DD)"));
+
+const estimateOption = Options.optional(Options.text("estimate")).pipe(
+	Options.withDescription(
+		"Estimate point UUID (from project estimate settings)",
+	),
+);
+
+const cycleOption = Options.optional(Options.text("cycle")).pipe(
+	Options.withDescription("Assign to a cycle (name or UUID)"),
+);
+
+const moduleOption = Options.optional(Options.text("module")).pipe(
+	Options.withDescription("Assign to a module (name or UUID)"),
 );
 
 export function issueUpdateHandler({
@@ -89,6 +117,11 @@ export function issueUpdateHandler({
 	assignee,
 	label,
 	noAssignee,
+	startDate,
+	targetDate,
+	estimate,
+	cycle,
+	module: mod,
 }: {
 	ref: string;
 	state: Option.Option<string>;
@@ -96,8 +129,13 @@ export function issueUpdateHandler({
 	title: Option.Option<string>;
 	description: Option.Option<string>;
 	assignee: Option.Option<string>;
-	label: Option.Option<string>;
+	label: Array<string>;
 	noAssignee: boolean;
+	startDate: Option.Option<string>;
+	targetDate: Option.Option<string>;
+	estimate: Option.Option<string>;
+	cycle: Option.Option<string>;
+	module: Option.Option<string>;
 }) {
 	return Effect.gen(function* () {
 		const { projectId, seq } = yield* parseIssueRef(ref);
@@ -123,24 +161,60 @@ export function issueUpdateHandler({
 			const memberId = yield* getMemberId(assignee.value);
 			body.assignees = [memberId];
 		}
-		if (Option.isSome(label)) {
-			const labelId = yield* getLabelId(projectId, label.value);
-			body.label_ids = [labelId];
+		if (label.length > 0) {
+			const labelIds: string[] = [];
+			for (const l of label) {
+				labelIds.push(yield* getLabelId(projectId, l));
+			}
+			body.labels = labelIds;
+		}
+		if (Option.isSome(startDate)) {
+			body.start_date = startDate.value;
+		}
+		if (Option.isSome(targetDate)) {
+			body.target_date = targetDate.value;
+		}
+		if (Option.isSome(estimate)) {
+			body.estimate_point = estimate.value;
 		}
 
-		if (Object.keys(body).length === 0) {
+		const hasCycle = Option.isSome(cycle);
+		const hasModule = Option.isSome(mod);
+
+		if (Object.keys(body).length === 0 && !hasCycle && !hasModule) {
 			yield* Effect.fail(
 				new Error(
-					"Nothing to update. Specify --state, --priority, --title, --description, --assignee, --label, or --no-assignee",
+					"Nothing to update. Specify --state, --priority, --title, --description, --assignee, --label, --no-assignee, --start-date, --target-date, --estimate, --cycle, or --module",
 				),
 			);
 		}
 
-		const raw = yield* api.patch(
-			`projects/${projectId}/issues/${issue.id}/`,
-			body,
-		);
-		yield* decodeOrFail(IssueSchema, raw);
+		if (Object.keys(body).length > 0) {
+			const raw = yield* api.patch(
+				`projects/${projectId}/issues/${issue.id}/`,
+				body,
+			);
+			yield* decodeOrFail(IssueSchema, raw);
+		}
+
+		if (hasCycle) {
+			yield* requireProjectFeature(projectId, "cycle_view");
+			const resolved = yield* resolveCycle(projectId, cycle.value);
+			yield* api.post(
+				`projects/${projectId}/cycles/${resolved.id}/cycle-issues/`,
+				{ issues: [issue.id] },
+			);
+		}
+
+		if (hasModule) {
+			yield* requireProjectFeature(projectId, "module_view");
+			const resolved = yield* resolveModule(projectId, mod.value);
+			yield* api.post(
+				`projects/${projectId}/modules/${resolved.id}/module-issues/`,
+				{ issues: [issue.id] },
+			);
+		}
+
 		const refreshedRaw = yield* api.get(
 			`projects/${projectId}/issues/${issue.id}/`,
 		);
@@ -163,12 +237,17 @@ export const issueUpdate = Command.make(
 		assignee: assigneeOption,
 		label: labelOption,
 		noAssignee: noAssigneeOption,
+		startDate: startDateOption,
+		targetDate: targetDateOption,
+		estimate: estimateOption,
+		cycle: cycleOption,
+		module: moduleOption,
 		ref: refArg,
 	},
 	issueUpdateHandler,
 ).pipe(
 	Command.withDescription(
-		'Update an issue\'s state, priority, title, description, or assignee. Options must come before the REF argument.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --title "New issue title" PROJ-29\n  plane issue update --assignee "Jane Doe" PROJ-29\n  plane issue update --no-assignee PROJ-29\n  plane issue update --description "New description" PROJ-29',
+		'Update an issue\'s state, priority, title, description, assignee, labels, dates, estimate, cycle, or module.\n\nExamples:\n  plane issue update --state completed PROJ-29\n  plane issue update --priority high WEB-5\n  plane issue update --start-date 2026-04-01 --target-date 2026-04-15 PROJ-29\n  plane issue update --label bug --label urgent PROJ-29\n  plane issue update --cycle "Sprint 3" PROJ-29\n  plane issue update --module "Backend" PROJ-29\n  plane issue update --estimate <UUID> PROJ-29',
 	),
 );
 // --- issue comment ---
@@ -232,8 +311,30 @@ const createAssigneeOption = Options.optional(Options.text("assignee")).pipe(
 	Options.withDescription("Assign to a member (display name, email, or UUID)"),
 );
 
-const createLabelOption = Options.optional(Options.text("label")).pipe(
-	Options.withDescription("Set issue label by name"),
+const createLabelOption = Options.repeated(Options.text("label")).pipe(
+	Options.withDescription("Set issue label(s) by name (repeatable)"),
+);
+
+const createStartDateOption = Options.optional(Options.text("start-date")).pipe(
+	Options.withDescription("Start date (YYYY-MM-DD)"),
+);
+
+const createTargetDateOption = Options.optional(
+	Options.text("target-date").pipe(Options.withAlias("due-date")),
+).pipe(Options.withDescription("Target/due date (YYYY-MM-DD)"));
+
+const createEstimateOption = Options.optional(Options.text("estimate")).pipe(
+	Options.withDescription(
+		"Estimate point UUID (from project estimate settings)",
+	),
+);
+
+const createCycleOption = Options.optional(Options.text("cycle")).pipe(
+	Options.withDescription("Assign to a cycle (name or UUID)"),
+);
+
+const createModuleOption = Options.optional(Options.text("module")).pipe(
+	Options.withDescription("Assign to a module (name or UUID)"),
 );
 
 export function issueCreateHandler({
@@ -244,6 +345,11 @@ export function issueCreateHandler({
 	description,
 	assignee,
 	label,
+	startDate,
+	targetDate,
+	estimate,
+	cycle,
+	module: mod,
 }: {
 	project: string;
 	title: string;
@@ -251,7 +357,12 @@ export function issueCreateHandler({
 	state: Option.Option<string>;
 	description: Option.Option<string>;
 	assignee: Option.Option<string>;
-	label: Option.Option<string>;
+	label: Array<string>;
+	startDate: Option.Option<string>;
+	targetDate: Option.Option<string>;
+	estimate: Option.Option<string>;
+	cycle: Option.Option<string>;
+	module: Option.Option<string>;
 }) {
 	return Effect.gen(function* () {
 		const { key, id: projectId } = yield* resolveProject(project);
@@ -266,12 +377,43 @@ export function issueCreateHandler({
 			const memberId = yield* getMemberId(assignee.value);
 			body.assignees = [memberId];
 		}
-		if (Option.isSome(label)) {
-			const labelId = yield* getLabelId(projectId, label.value);
-			body.label_ids = [labelId];
+		if (label.length > 0) {
+			const labelIds: string[] = [];
+			for (const l of label) {
+				labelIds.push(yield* getLabelId(projectId, l));
+			}
+			body.labels = labelIds;
+		}
+		if (Option.isSome(startDate)) {
+			body.start_date = startDate.value;
+		}
+		if (Option.isSome(targetDate)) {
+			body.target_date = targetDate.value;
+		}
+		if (Option.isSome(estimate)) {
+			body.estimate_point = estimate.value;
 		}
 		const raw = yield* api.post(`projects/${projectId}/issues/`, body);
 		const created = yield* decodeOrFail(IssueSchema, raw);
+
+		if (Option.isSome(cycle)) {
+			yield* requireProjectFeature(projectId, "cycle_view");
+			const resolved = yield* resolveCycle(projectId, cycle.value);
+			yield* api.post(
+				`projects/${projectId}/cycles/${resolved.id}/cycle-issues/`,
+				{ issues: [created.id] },
+			);
+		}
+
+		if (Option.isSome(mod)) {
+			yield* requireProjectFeature(projectId, "module_view");
+			const resolved = yield* resolveModule(projectId, mod.value);
+			yield* api.post(
+				`projects/${projectId}/modules/${resolved.id}/module-issues/`,
+				{ issues: [created.id] },
+			);
+		}
+
 		yield* Console.log(
 			`Created ${key}-${created.sequence_id}: ${created.name}`,
 		);
@@ -286,13 +428,18 @@ export const issueCreate = Command.make(
 		description: createDescriptionOption,
 		assignee: createAssigneeOption,
 		label: createLabelOption,
+		startDate: createStartDateOption,
+		targetDate: createTargetDateOption,
+		estimate: createEstimateOption,
+		cycle: createCycleOption,
+		module: createModuleOption,
 		title: createTitleOption,
 		project: createProjectArg,
 	},
 	issueCreateHandler,
 ).pipe(
 	Command.withDescription(
-		'Create a new issue in a project. Omit PROJECT to use the saved current project.\n\nExamples:\n  plane issue create --title "Migrate Button component"\n  plane issue create --title "Migrate Button component" PROJ\n  plane issue create --priority high --state started --title "Fix lint pipeline"\n  plane issue create --description "Detailed context here" --title "Add dark mode" PROJ\n  plane issue create --assignee "Jane Doe" --title "Onboarding bug" PROJ',
+		'Create a new issue in a project.\n\nExamples:\n  plane issue create --title "Migrate Button component"\n  plane issue create --title "Fix pipeline" --start-date 2026-04-01 --target-date 2026-04-15\n  plane issue create --title "Bug fix" --label bug --label urgent\n  plane issue create --title "Sprint task" --cycle "Sprint 3"\n  plane issue create --title "Backend task" --module "Backend"',
 	),
 );
 // --- issue activity ---
@@ -338,322 +485,6 @@ export const issueActivity = Command.make(
 	Command.withDescription(
 		"Show audit trail for an issue — who changed what and when.\n\nExample:\n  plane issue activity PROJ-29",
 	),
-);
-// --- issue link list ---
-export function issueLinkListHandler({ ref }: { ref: string }) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* requestWithFallback(
-			issueLinkPaths(projectId, issue.id),
-			(path) => api.get(path),
-			`Issue links are not available for ${ref} on this Plane instance or API version.`,
-		);
-		const { results } = yield* decodeOrFail(IssueLinksResponseSchema, raw);
-		if (jsonMode) {
-			yield* Console.log(JSON.stringify(results, null, 2));
-			return;
-		}
-		if (xmlMode) {
-			yield* Console.log(toXml(results));
-			return;
-		}
-		if (results.length === 0) {
-			yield* Console.log("No links");
-			return;
-		}
-		const lines = results.map(
-			(l) => `${l.id}  ${l.title ?? "(no title)"}  ${l.url}`,
-		);
-		yield* Console.log(lines.join("\n"));
-	});
-}
-
-export const issueLinkList = Command.make(
-	"list",
-	{ ref: refArg },
-	issueLinkListHandler,
-).pipe(Command.withDescription("List URL links attached to an issue."));
-// --- issue link add ---
-const urlArg = Args.text({ name: "url" }).pipe(
-	Args.withDescription("URL to link"),
-);
-const linkTitleOption = Options.optional(Options.text("title")).pipe(
-	Options.withDescription("Human-readable title for the link"),
-);
-
-export function issueLinkAddHandler({
-	ref,
-	url,
-	title,
-}: {
-	ref: string;
-	url: string;
-	title: Option.Option<string>;
-}) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		const body: Record<string, string> = { url };
-		if (Option.isSome(title)) body.title = title.value;
-		const raw = yield* requestWithFallback(
-			issueLinkPaths(projectId, issue.id),
-			(path) => api.post(path, body),
-			`Issue links are not available for ${ref} on this Plane instance or API version.`,
-		);
-		const link = yield* decodeOrFail(IssueLinkSchema, raw);
-		yield* Console.log(`Link added: ${link.id}  ${link.url}`);
-	});
-}
-
-export const issueLinkAdd = Command.make(
-	"add",
-	{ title: linkTitleOption, ref: refArg, url: urlArg },
-	issueLinkAddHandler,
-).pipe(
-	Command.withDescription(
-		'Attach a URL link to an issue.\n\nExamples:\n  plane issue link add PROJ-29 https://github.com/org/repo/pull/42\n  plane issue link add --title "Design doc" PROJ-29 https://docs.example.com',
-	),
-);
-// --- issue link remove ---
-const linkIdArg = Args.text({ name: "link-id" }).pipe(
-	Args.withDescription("Link ID (from 'plane issue link list')"),
-);
-
-export function issueLinkRemoveHandler({
-	ref,
-	linkId,
-}: {
-	ref: string;
-	linkId: string;
-}) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		// Resolve the correct base path for issue links via a safe probe,
-		// then delete once so a missing link ID results in a proper not-found error.
-		const basePath = yield* requestWithFallback(
-			issueLinkPaths(projectId, issue.id),
-			(path) => api.get(path).pipe(Effect.as(path)),
-			`Issue links are not available for ${ref} on this Plane instance or API version.`,
-		);
-		yield* api.delete(`${basePath}${linkId}/`);
-		yield* Console.log(`Link ${linkId} removed from ${ref}`);
-	});
-}
-
-export const issueLinkRemove = Command.make(
-	"remove",
-	{ ref: refArg, linkId: linkIdArg },
-	issueLinkRemoveHandler,
-).pipe(Command.withDescription("Remove a URL link from an issue by link ID."));
-// --- issue link (parent) ---
-export const issueLink = Command.make("link").pipe(
-	Command.withDescription(
-		"Manage URL links on an issue. Subcommands: list, add, remove",
-	),
-	Command.withSubcommands([issueLinkList, issueLinkAdd, issueLinkRemove]),
-);
-// --- issue comments list ---
-export function issueCommentsListHandler({ ref }: { ref: string }) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* api.get(
-			`projects/${projectId}/issues/${issue.id}/comments/`,
-		);
-		const { results } = yield* decodeOrFail(CommentsResponseSchema, raw);
-		if (jsonMode) {
-			yield* Console.log(JSON.stringify(results, null, 2));
-			return;
-		}
-		if (xmlMode) {
-			yield* Console.log(toXml(results));
-			return;
-		}
-		if (results.length === 0) {
-			yield* Console.log("No comments");
-			return;
-		}
-		const lines = results.map((c) => {
-			const who = c.actor_detail?.display_name ?? "?";
-			const when = c.created_at.slice(0, 16).replace("T", " ");
-			const text = (c.comment_html ?? "").replace(/<[^>]+>/g, "").trim();
-			return `${c.id}  ${when}  ${who}: ${text}`;
-		});
-		yield* Console.log(lines.join("\n"));
-	});
-}
-
-export const issueCommentsList = Command.make(
-	"list",
-	{ ref: refArg },
-	issueCommentsListHandler,
-).pipe(
-	Command.withDescription(
-		"List comments on an issue. Shows comment ID, timestamp, author, and plain text.\n\nExample:\n  plane issue comments list PROJ-29",
-	),
-);
-// --- issue comment update ---
-const commentIdArg = Args.text({ name: "comment-id" }).pipe(
-	Args.withDescription("Comment ID (from 'plane issue comments list')"),
-);
-
-export function issueCommentUpdateHandler({
-	ref,
-	commentId,
-	text,
-}: {
-	ref: string;
-	commentId: string;
-	text: string;
-}) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		const escaped = escapeHtmlText(text);
-		yield* api.patch(
-			`projects/${projectId}/issues/${issue.id}/comments/${commentId}/`,
-			{ comment_html: `<p>${escaped}</p>` },
-		);
-		yield* Console.log(`Comment ${commentId} updated`);
-	});
-}
-
-export const issueCommentUpdate = Command.make(
-	"update",
-	{ ref: refArg, commentId: commentIdArg, text: textArg },
-	issueCommentUpdateHandler,
-).pipe(
-	Command.withDescription(
-		'Edit an existing comment.\n\nExample:\n  plane issue comments update PROJ-29 <comment-id> "Updated text"',
-	),
-);
-// --- issue comment delete ---
-export function issueCommentDeleteHandler({
-	ref,
-	commentId,
-}: {
-	ref: string;
-	commentId: string;
-}) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		yield* api.delete(
-			`projects/${projectId}/issues/${issue.id}/comments/${commentId}/`,
-		);
-		yield* Console.log(`Comment ${commentId} deleted`);
-	});
-}
-
-export const issueCommentDelete = Command.make(
-	"delete",
-	{ ref: refArg, commentId: commentIdArg },
-	issueCommentDeleteHandler,
-).pipe(Command.withDescription("Delete a comment from an issue."));
-// --- issue comments (parent) ---
-export const issueComments = Command.make("comments").pipe(
-	Command.withDescription(
-		"Manage comments on an issue. Subcommands: list, update, delete\n\nNote: use 'plane issue comment REF TEXT' to add a new comment.",
-	),
-	Command.withSubcommands([
-		issueCommentsList,
-		issueCommentUpdate,
-		issueCommentDelete,
-	]),
-);
-// --- issue worklogs list ---
-export function issueWorklogsListHandler({ ref }: { ref: string }) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		const raw = yield* requestWithFallback(
-			issueWorklogPaths(projectId, issue.id),
-			(path) => api.get(path),
-			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
-		);
-		const { results } = yield* decodeOrFail(WorklogsResponseSchema, raw);
-		if (jsonMode) {
-			yield* Console.log(JSON.stringify(results, null, 2));
-			return;
-		}
-		if (xmlMode) {
-			yield* Console.log(toXml(results));
-			return;
-		}
-		if (results.length === 0) {
-			yield* Console.log("No worklogs");
-			return;
-		}
-		const lines = results.map((w) => {
-			const who = w.logged_by_detail?.display_name ?? "?";
-			const when = w.created_at.slice(0, 10);
-			const hrs = (w.duration / 60).toFixed(1);
-			const desc = w.description ?? "";
-			return `${w.id}  ${when}  ${who}  ${hrs}h  ${desc}`;
-		});
-		yield* Console.log(lines.join("\n"));
-	});
-}
-
-export const issueWorklogsList = Command.make(
-	"list",
-	{ ref: refArg },
-	issueWorklogsListHandler,
-).pipe(
-	Command.withDescription(
-		"List time log entries for an issue. Duration shown in hours.\n\nExample:\n  plane issue worklogs list PROJ-29",
-	),
-);
-// --- issue worklogs add ---
-const durationArg = Args.integer({ name: "minutes" }).pipe(
-	Args.withDescription("Time spent in minutes"),
-);
-const worklogDescOption = Options.optional(Options.text("description")).pipe(
-	Options.withDescription("Optional description of work done"),
-);
-
-export function issueWorklogsAddHandler({
-	ref,
-	duration,
-	description,
-}: {
-	ref: string;
-	duration: number;
-	description: Option.Option<string>;
-}) {
-	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
-		const issue = yield* findIssueBySeq(projectId, seq);
-		const body: WorklogPayload = { duration };
-		if (Option.isSome(description)) body.description = description.value;
-		const raw = yield* requestWithFallback(
-			issueWorklogPaths(projectId, issue.id),
-			(path) => api.post(path, body),
-			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
-		);
-		const log = yield* decodeOrFail(WorklogSchema, raw);
-		const hrs = (log.duration / 60).toFixed(1);
-		yield* Console.log(`Logged ${hrs}h on ${ref} (${log.id})`);
-	});
-}
-
-export const issueWorklogsAdd = Command.make(
-	"add",
-	{ description: worklogDescOption, ref: refArg, duration: durationArg },
-	issueWorklogsAddHandler,
-).pipe(
-	Command.withDescription(
-		'Log time spent on an issue (duration in minutes).\n\nExamples:\n  plane issue worklogs add PROJ-29 90\n  plane issue worklogs add --description "code review" PROJ-29 30',
-	),
-);
-// --- issue worklogs (parent) ---
-export const issueWorklogs = Command.make("worklogs").pipe(
-	Command.withDescription(
-		"Manage time logs for an issue. Subcommands: list, add",
-	),
-	Command.withSubcommands([issueWorklogsList, issueWorklogsAdd]),
 );
 // --- issue delete ---
 export function issueDeleteHandler({ ref }: { ref: string }) {

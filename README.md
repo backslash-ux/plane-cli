@@ -47,6 +47,7 @@ For path-local overrides in the current project directory:
 
 ```bash
 plane init --local
+plane init --local --include-archived
 plane . init
 ```
 
@@ -58,6 +59,7 @@ environment variables > nearest .plane/config.json > ~/.config/plane/config.json
 
 The local config is discovered from the current working directory upward, so a config written at the repo root applies inside nested folders unless a deeper `.plane/config.json` overrides it.
 When you run `plane init --local`, the CLI also reads the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands return explicit feature-disabled errors when the project has them turned off.
+Project lists and project-selection prompts exclude archived projects by default. Add `--include-archived` to `plane init`, `plane . init`, `plane projects list`, or `plane stats ... workspace` when you intentionally want archived projects included.
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse what already exists instead of inventing duplicates.
 If `AGENTS.md` already exists in that directory, `plane init --local` appends a managed Plane project context section at the bottom without removing the existing content. If it does not exist, the CLI creates it. The managed section points agents at `.plane/project-context.json`, tells them to prefer the repo-local `plane` CLI for Plane work, and includes a small command pattern for clearing inherited `PLANE_*` overrides before using the local config.
 
@@ -74,6 +76,7 @@ To persist a current project after setup:
 
 ```bash
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects use PROJ --global
@@ -94,6 +97,7 @@ Project-scoped feature availability still depends on the target Plane project. O
 ```bash
 # Projects
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects current
@@ -102,10 +106,20 @@ plane projects current
 plane issues list
 plane issues list PROJ
 plane issues list PROJ --state started
+plane issues list PROJ --no-assignee
+plane issues list PROJ --stale 7
+plane issues list PROJ --cycle "Week 14"
 plane issue get PROJ-29
 plane issue create --title "Title"
 plane issue create --title "Title" PROJ
+plane issue create --start-date 2025-04-01 --target-date 2025-04-14 --title "Sprint task" PROJ
+plane issue create --label bug --label urgent --title "Regression" PROJ
+plane issue create --cycle "Week 14" --title "Scoped task" PROJ
 plane issue update --state completed --priority high PROJ-29
+plane issue update --start-date 2025-04-01 --target-date 2025-04-14 PROJ-29
+plane issue update --estimate <UUID> PROJ-29
+plane issue update --cycle "Week 14" PROJ-29
+plane issue update --module "Sprint 3" PROJ-29
 plane issue delete PROJ-29
 
 # Comments
@@ -129,6 +143,9 @@ plane issue worklogs add --description "standup" PROJ-29 30
 
 # Cycles
 plane cycles list PROJ
+plane cycles create --name "Week 14" --start-date 2025-04-01 --end-date 2025-04-07 PROJ
+plane cycles update --end-date 2025-04-08 PROJ "Week 14"
+plane cycles delete PROJ "Week 14"
 plane cycles issues list PROJ CYCLE_ID
 plane cycles issues add PROJ CYCLE_ID PROJ-29
 
@@ -154,7 +171,20 @@ plane states list PROJ
 plane labels list PROJ
 plane labels delete PROJ bug
 plane members list
+
+# Stats
+plane stats
+plane stats PROJ
+plane stats --since 2025-01-01 --until 2025-02-01 PROJ
+plane stats --cycle "Sprint 1" PROJ
+plane stats --module "Sprint 3" PROJ
+plane stats --assignee Alice PROJ
+plane stats workspace
+plane stats --include-archived workspace
+plane stats --since 2025-01-01 workspace --json
 ```
+
+For `plane stats`, command-specific options such as `--since`, `--until`, `--cycle`, `--module`, and `--assignee` must come before the `PROJECT` argument or the special `workspace` keyword because of `@effect/cli` parsing rules. `--json` and `--xml` still work as global output flags. Workspace aggregation skips projects that return `403` for issue listing and reports them in the output.
 
 Project identifiers: short strings like `PROJ`, `WEB`. Issue refs: `PROJ-29`, `WEB-5`.
 
@@ -178,6 +208,9 @@ plane cycles list PROJ --json
 
 - `plane issue update` expects flags before the issue ref, for example `plane issue update --state completed PROJ-29`.
 - `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
+- `--target-date` has an alias `--due-date` for convenience.
+- `--label` can be passed multiple times to assign several labels at once.
+- `--cycle` and `--module` accept either a UUID or the exact name shown by `plane cycles list` / `plane modules list`.
 - `plane issue link add` accepts an optional link title via `--title`.
 - `plane labels delete` accepts either the label UUID or the exact label name returned by `plane labels list`.
 - `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.

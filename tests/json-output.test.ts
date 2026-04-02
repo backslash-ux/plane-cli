@@ -361,6 +361,9 @@ describe("issuesList --json", () => {
 					state: Option.none(),
 					assignee: Option.none(),
 					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
 				}),
 			),
 		);

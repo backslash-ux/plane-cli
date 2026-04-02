@@ -3,9 +3,9 @@ name: plane-cli
 description: >
   Use when working with Plane project management via the `plane` CLI. Covers
   listing/creating/updating/deleting issues, managing cycles, modules, pages,
-  intake, comments, worklogs, links, states, labels, and members. Works with
-  any Plane instance (cloud or self-hosted). Supports structured --xml/--json
-  output for AI agents.
+  intake, comments, worklogs, links, states, labels, members, and project
+  stats/analytics. Works with any Plane instance (cloud or self-hosted).
+  Supports structured --xml/--json output for AI agents.
 ---
 
 # Plane CLI Skill Guide
@@ -31,6 +31,7 @@ For path-local overrides in the current directory:
 
 ```bash
 plane init --local
+plane init --local --include-archived
 plane . init
 ```
 
@@ -43,6 +44,7 @@ PLANE_* environment variables > nearest .plane/config.json > ~/.config/plane/con
 `plane init --local` also fetches the project's feature flags from Plane and reports which project-scoped features are actually enabled. Cycles, modules, pages, and intake commands fail with explicit feature-disabled errors when the project has them turned off.
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse current project conventions instead of creating duplicates.
 It also creates or updates `AGENTS.md` in that directory with a managed Plane context section at the bottom so AI agents know to read `.plane/project-context.json`, prefer the repo-local `plane` CLI, and clear inherited `PLANE_*` overrides before relying on local project config.
+Project lists and project-selection prompts exclude archived projects by default. Add `--include-archived` to `plane init`, `plane . init`, `plane projects list`, or `plane stats ... workspace` when you intentionally need archived projects included.
 
 Or set environment variables (override saved config):
 
@@ -57,6 +59,7 @@ You can also save a current project explicitly:
 
 ```bash
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects use PROJ --global
@@ -91,6 +94,7 @@ All list commands support `--xml` and `--json` flags.
 plane projects list --xml
 plane issues list PROJ --xml
 plane issues list PROJ --state started --xml
+plane stats --json PROJ
 plane states list PROJ --xml
 plane labels list PROJ --xml
 plane members list --xml
@@ -111,6 +115,7 @@ plane modules list PROJ --xml
 
 ```bash
 plane projects list
+plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects current
@@ -130,6 +135,9 @@ plane issues list PROJ --state started
 plane issues list PROJ --state backlog
 plane issues list PROJ --assignee "Jane Doe"
 plane issues list PROJ --priority high
+plane issues list PROJ --no-assignee
+plane issues list PROJ --stale 7
+plane issues list PROJ --cycle "Week 14"
 plane issues list PROJ --xml
 ```
 
@@ -149,7 +157,11 @@ plane issue create --title "Issue title" PROJ
 plane issue create --priority high --state started --title "Fix lint pipeline"
 plane issue create --description '<p>Detailed context</p>' --title "Add dark mode" PROJ
 plane issue create --assignee "Jane Doe" --title "Onboarding bug" PROJ
-plane issue create --label "bug" --title "Regression in login flow" PROJ
+plane issue create --label "bug" --label "urgent" --title "Regression in login flow" PROJ
+plane issue create --start-date 2025-04-01 --target-date 2025-04-14 --title "Sprint task" PROJ
+plane issue create --estimate <UUID> --title "Sized work" PROJ
+plane issue create --cycle "Week 14" --title "Scoped to cycle" PROJ
+plane issue create --module "Sprint 3" --title "Scoped to module" PROJ
 ```
 
 ### Update
@@ -166,6 +178,11 @@ plane issue update --description '<p>Updated context</p>' PROJ-29
 plane issue update --assignee "Jane Doe" PROJ-29
 plane issue update --no-assignee PROJ-29
 plane issue update --label "enhancement" PROJ-29
+plane issue update --label "bug" --label "critical" PROJ-29
+plane issue update --start-date 2025-04-01 --target-date 2025-04-14 PROJ-29
+plane issue update --estimate <UUID> PROJ-29
+plane issue update --cycle "Week 14" PROJ-29
+plane issue update --module "Sprint 3" PROJ-29
 ```
 
 ### Delete
@@ -251,17 +268,43 @@ Members are workspace-scoped. This command does not take a project argument.
 
 ---
 
+## Stats (analytics)
+
+```bash
+plane stats
+plane stats PROJ
+plane stats --since 2025-01-01 --until 2025-02-01 PROJ
+plane stats --cycle "Sprint 1" PROJ
+plane stats --module "Sprint 3" PROJ
+plane stats --assignee Alice PROJ
+plane stats workspace
+plane stats --include-archived workspace
+plane stats --since 2025-01-01 workspace --json
+plane stats workspace --xml
+```
+
+Aggregates issues client-side by state group, priority, assignment, and period counts. Supports `--since`/`--until` date filtering, cycle/module scoping, assignee filtering, and the special `workspace` target for cross-project totals. Workspace stats exclude archived projects by default; add `--include-archived` to opt in. `--json` returns a structured object with `total_issues`, `by_state_group`, `by_priority`, `created_in_range`, `completed_in_range`, `assigned`, and `unassigned` counts.
+
+For `plane stats`, command-specific options must come before `PROJ` or `workspace` because of `@effect/cli` parsing rules. Workspace aggregation skips projects that return `403` for issue listing and reports them in the output.
+
+---
+
 ## Cycles (sprints)
 
 ```bash
 plane cycles list
 plane cycles list PROJ
 plane cycles list PROJ --xml
+plane cycles create --name "Week 14" --start-date 2025-04-01 --end-date 2025-04-07 PROJ
+plane cycles update --end-date 2025-04-08 PROJ "Week 14"
+plane cycles delete PROJ "Week 14"
 plane cycles issues list PROJ <cycle-id>
 plane cycles issues add PROJ <cycle-id> PROJ-29
 ```
 
 Cycle IDs are UUIDs. Fetch them from `plane cycles list PROJ`.
+Cycle create/update/delete accept cycle names for convenience — the CLI resolves names to UUIDs internally.
+`plane cycles list --json` includes `total_issues`, `completed_issues`, and `cancelled_issues` counts plus a computed status (draft, upcoming, current, completed).
 
 ---
 
@@ -328,8 +371,14 @@ Some deployments do not expose page endpoints even when the project advertises p
 | `state_detail` | Always null — ignore |
 | `priority` | `urgent`, `high`, `medium`, `low`, `none` |
 | `assignees` | Array of user UUIDs |
+| `labels` | Array of label objects (`id`, `name`, `color`) |
 | `label_ids` | Array of label UUIDs |
-| `due_date` | null or ISO date string |
+| `start_date` | null or ISO date string |
+| `target_date` | null or ISO date string |
+| `completed_at` | null or ISO timestamp (when issue moved to completed state group) |
+| `created_at` | ISO timestamp |
+| `updated_at` | ISO timestamp |
+| `estimate_point` | null or estimate value |
 
 ---
 
@@ -338,6 +387,9 @@ Some deployments do not expose page endpoints even when the project advertises p
 - No server-side text search — fetch all issues and filter locally.
 - No epics — use labels or modules to group related issues.
 - `description` in issue or page create and update flows is passed through to `description_html`; send HTML such as `<p>Details</p>` when you want formatted output.
+- `--target-date` has an alias `--due-date` for convenience.
+- `--label` can be specified multiple times for multi-label assignment.
+- `--cycle` and `--module` accept either a UUID or the exact name listed by `plane cycles list` / `plane modules list`. The CLI resolves names internally.
 - `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
 - `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.
 - Always fetch state/label/member IDs live — never hardcode UUIDs across workspaces.

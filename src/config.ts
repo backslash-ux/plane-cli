@@ -10,6 +10,13 @@ export const StateSchema = Schema.Struct({
 });
 export type State = typeof StateSchema.Type;
 
+export const IssueLabelSchema = Schema.Struct({
+	id: Schema.String,
+	name: Schema.String,
+	color: Schema.optional(Schema.NullOr(Schema.String)),
+});
+export type IssueLabel = typeof IssueLabelSchema.Type;
+
 export const IssueSchema = Schema.Struct({
 	id: Schema.String,
 	sequence_id: Schema.Number,
@@ -19,6 +26,14 @@ export const IssueSchema = Schema.Struct({
 	assignees: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 	description_html: Schema.optional(Schema.NullOr(Schema.String)),
 	estimate_point: Schema.optional(Schema.NullOr(Schema.String)),
+	start_date: Schema.optional(Schema.NullOr(Schema.String)),
+	target_date: Schema.optional(Schema.NullOr(Schema.String)),
+	completed_at: Schema.optional(Schema.NullOr(Schema.String)),
+	created_at: Schema.optional(Schema.NullOr(Schema.String)),
+	updated_at: Schema.optional(Schema.NullOr(Schema.String)),
+	labels: Schema.optional(
+		Schema.NullOr(Schema.Array(Schema.Union(Schema.String, IssueLabelSchema))),
+	),
 });
 export type Issue = typeof IssueSchema.Type;
 
@@ -29,6 +44,43 @@ export const StatesResponseSchema = Schema.Struct({
 export const IssuesResponseSchema = Schema.Struct({
 	results: Schema.Array(IssueSchema),
 });
+
+export const PaginatedIssuesResponseSchema = Schema.Struct({
+	results: Schema.Array(IssueSchema),
+	next_cursor: Schema.optional(Schema.NullOr(Schema.String)),
+	next_page_results: Schema.optional(Schema.Boolean),
+});
+
+export interface StatsPeriod {
+	since?: string;
+	until?: string;
+}
+
+export interface StatsResult {
+	project: string;
+	period?: StatsPeriod;
+	total_issues: number;
+	by_state_group: Record<string, number>;
+	by_priority: Record<string, number>;
+	created_in_range: number;
+	completed_in_range: number;
+	assigned: number;
+	unassigned: number;
+}
+
+export interface WorkspaceStatsResult {
+	workspace: string;
+	period?: StatsPeriod;
+	total_issues: number;
+	by_state_group: Record<string, number>;
+	by_priority: Record<string, number>;
+	created_in_range: number;
+	completed_in_range: number;
+	assigned: number;
+	unassigned: number;
+	projects: StatsResult[];
+	skipped_projects?: string[];
+}
 
 export const LabelSchema = Schema.Struct({
 	id: Schema.String,
@@ -55,9 +107,15 @@ export const MembersResponseSchema = Schema.Array(MemberSchema);
 export const CycleSchema = Schema.Struct({
 	id: Schema.String,
 	name: Schema.String,
-	status: Schema.optional(Schema.String),
+	status: Schema.optional(Schema.NullOr(Schema.String)),
 	start_date: Schema.optional(Schema.NullOr(Schema.String)),
 	end_date: Schema.optional(Schema.NullOr(Schema.String)),
+	total_issues: Schema.optional(Schema.Number),
+	completed_issues: Schema.optional(Schema.Number),
+	cancelled_issues: Schema.optional(Schema.Number),
+	started_issues: Schema.optional(Schema.Number),
+	unstarted_issues: Schema.optional(Schema.Number),
+	backlog_issues: Schema.optional(Schema.Number),
 });
 export type Cycle = typeof CycleSchema.Type;
 
@@ -70,6 +128,7 @@ export const ProjectSchema = Schema.Struct({
 	identifier: Schema.String,
 	name: Schema.String,
 	description: Schema.optional(Schema.NullOr(Schema.String)),
+	archived_at: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type Project = typeof ProjectSchema.Type;
 
@@ -91,6 +150,12 @@ export function isProjectIntakeEnabled(
 	project: Pick<ProjectDetail, "inbox_view" | "intake_view">,
 ): boolean {
 	return (project.inbox_view || project.intake_view) ?? false;
+}
+
+export function isProjectArchived(
+	project: Pick<Project, "archived_at">,
+): boolean {
+	return project.archived_at != null;
 }
 
 export const EstimateSchema = Schema.Struct({

@@ -11,6 +11,7 @@ import { modules } from "./commands/modules.js";
 import { pages } from "./commands/pages.js";
 import { projects } from "./commands/projects.js";
 import { states } from "./commands/states.js";
+import { stats } from "./commands/stats.js";
 
 const plane = Command.make("plane").pipe(
 	Command.withDescription(
@@ -52,14 +53,19 @@ ALL SUBCOMMANDS
   init                Set up global or local config interactively
   .                   local init
   projects            list | current | use
-  issues list         List issues (supports --state, --assignee, --priority)
+  issues list         List issues (supports --state, --assignee, --priority,
+                      --no-assignee, --stale, --cycle)
   issue               get | create | update | delete | comment | activity |
                       link | comments | worklogs
-  cycles              list | issues (list, add)
+                      create/update support --start-date, --target-date,
+                      --estimate, --cycle, --module, --label (repeatable)
+  cycles              list | create | update | delete | issues (list, add)
   modules             list | create | delete | issues (list, add, remove)
   intake              list | accept | reject
   pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
   states list         List workflow states for a project
+  stats               Aggregated issue statistics with period counts; use
+                      'workspace' for cross-project totals
   labels              list | create | delete
   members list        List workspace members
 
@@ -72,6 +78,7 @@ FOR AI AGENTS / BOTS
   - Use PLANE_WORKSPACE to select the workspace
   - Use PLANE_PROJECT or 'plane projects use PROJ' to persist a current project
   - Local config lives in '.plane/config.json' and is resolved from the current directory upward
+  - Project-listing contexts exclude archived projects by default; add '--include-archived' where supported to include them
   - 'plane init --local' also writes '.plane/project-context.json' with existing states, labels, and estimate points for the selected project
   - 'plane init --local' also creates or updates 'AGENTS.md' so local AI agents reuse '.plane/project-context.json' for project-specific context
   - Full Plane REST API reference (180+ endpoints):
@@ -84,6 +91,7 @@ FOR AI AGENTS / BOTS
 		issues,
 		issue,
 		states,
+		stats,
 		labels,
 		members,
 		cycles,
@@ -95,5 +103,5 @@ FOR AI AGENTS / BOTS
 
 export const cli = Command.run(plane, {
 	name: "plane",
-	version: "1.1.0",
+	version: "1.2.0",
 });

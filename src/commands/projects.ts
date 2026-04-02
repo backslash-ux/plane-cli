@@ -1,9 +1,8 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
-import { api, decodeOrFail } from "../api.js";
-import { ProjectsResponseSchema } from "../config.js";
+import { isProjectArchived } from "../config.js";
 import { jsonMode, toXml, xmlMode } from "../output.js";
-import { resolveProject } from "../resolve.js";
+import { listProjects, resolveProject } from "../resolve.js";
 import {
 	type ConfigScope,
 	getConfigDetails,
@@ -27,6 +26,11 @@ const globalOption = Options.boolean("global").pipe(
 const localOption = Options.boolean("local").pipe(
 	Options.withAlias("l"),
 	Options.withDescription("Write the current project to local config"),
+	Options.withDefault(false),
+);
+
+const includeArchivedOption = Options.boolean("include-archived").pipe(
+	Options.withDescription("Include archived projects in the results"),
 	Options.withDefault(false),
 );
 
@@ -64,10 +68,13 @@ function describeProjectSource(source: string): string {
 	}
 }
 
-export function projectsListHandler() {
+export function projectsListHandler({
+	includeArchived = false,
+}: {
+	includeArchived?: boolean;
+} = {}) {
 	return Effect.gen(function* () {
-		const raw = yield* api.get("projects/");
-		const { results } = yield* decodeOrFail(ProjectsResponseSchema, raw);
+		const results = yield* listProjects({ includeArchived });
 		const currentProject = getConfigDetails().defaultProject.toUpperCase();
 		if (jsonMode) {
 			yield* Console.log(JSON.stringify(results, null, 2));
@@ -80,15 +87,20 @@ export function projectsListHandler() {
 		const lines = results.map((project) => {
 			const marker =
 				currentProject === project.identifier.toUpperCase() ? "*" : " ";
-			return `${marker} ${project.identifier.padEnd(6)}  ${project.id}  ${project.name}`;
+			const archivedSuffix = isProjectArchived(project) ? "  (archived)" : "";
+			return `${marker} ${project.identifier.padEnd(6)}  ${project.id}  ${project.name}${archivedSuffix}`;
 		});
 		yield* Console.log(lines.join("\n"));
 	});
 }
 
-export const projectsList = Command.make("list", {}, projectsListHandler).pipe(
+export const projectsList = Command.make(
+	"list",
+	{ includeArchived: includeArchivedOption },
+	projectsListHandler,
+).pipe(
 	Command.withDescription(
-		"List all projects in the workspace. The IDENTIFIER column is what you pass to other commands. A leading '*' marks the saved current project.",
+		"List workspace projects, excluding archived ones by default. The IDENTIFIER column is what you pass to other commands. A leading '*' marks the saved current project. Add --include-archived to include archived projects.",
 	),
 );
 
@@ -105,8 +117,7 @@ export function projectsCurrentHandler() {
 		}
 		const source = describeProjectSource(config.sources.defaultProject);
 		const { key, id } = yield* resolveProject("@current");
-		const raw = yield* api.get("projects/");
-		const { results } = yield* decodeOrFail(ProjectsResponseSchema, raw);
+		const results = yield* listProjects({ includeArchived: true });
 		const project = results.find((candidate) => candidate.id === id);
 		if (!project) {
 			yield* Console.log(`${key}  (${source})`);

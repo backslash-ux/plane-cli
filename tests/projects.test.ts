@@ -25,6 +25,12 @@ const ORIGINAL_CWD = process.cwd();
 const PROJECTS = [
 	{ id: "proj-acme", identifier: "ACME", name: "Acme Project" },
 	{ id: "proj-web", identifier: "WEB", name: "Web Project" },
+	{
+		id: "proj-old",
+		identifier: "OLD",
+		name: "Old Project",
+		archived_at: "2025-01-01T00:00:00Z",
+	},
 ];
 
 const server = setupServer(
@@ -231,5 +237,22 @@ describe("projectsList", () => {
 		}
 
 		expect(logs.join("\n")).toContain("* WEB");
+		expect(logs.join("\n")).not.toContain("OLD");
+	});
+
+	it("includes archived projects when requested", async () => {
+		const { projectsListHandler } = await import("@/commands/projects");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(projectsListHandler({ includeArchived: true }));
+		} finally {
+			console.log = orig;
+		}
+
+		expect(logs.join("\n")).toContain("OLD");
+		expect(logs.join("\n")).toContain("(archived)");
 	});
 });
