@@ -6,7 +6,7 @@ This project aims to follow [Keep a Changelog](https://keepachangelog.com/en/1.1
 
 Earlier project history may predate this file.
 
-## [Unreleased]
+## 1.2.0
 
 ### Added
 
@@ -21,6 +21,12 @@ Earlier project history may predate this file.
 
 - **Archived project defaults.** Project-listing contexts now exclude archived projects by default, including interactive init selection and workspace stats aggregation. Use `--include-archived` to opt back in when needed.
 - Extracted issue link, comments, and worklogs sub-commands into `src/commands/issue-sub.ts` to keep `issue.ts` under the 700-line file-size limit.
+
+### Validated
+
+- Full release gate passed via `bun run check:all`: TypeScript typecheck, Biome check, file-size gate, and coverage check all succeeded for the 1.2.0 release train.
+- Full Bun test suite passed: **304 tests across 22 files** with **598 expectations**, plus coverage at **98.33% functions** and **96.57% lines**.
+- 1.2.0 command surfaces now covered by tests include issue field visibility and write-path expansions, advanced issue list filters, cycle lifecycle commands, workspace/project stats aggregation, and archived-project exclusion by default with `--include-archived` opt-in for init/project-listing contexts.
 
 ## 1.1.0
 
