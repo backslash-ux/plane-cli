@@ -13,76 +13,60 @@ import { projects } from "./commands/projects.js";
 import { states } from "./commands/states.js";
 import { stats } from "./commands/stats.js";
 
+export const VERSION = "1.2.0";
+
+export function isRootHelpRequest(argv: ReadonlyArray<string>): boolean {
+	const args = argv.slice(2);
+	return (
+		args.length === 0 ||
+		(args.length === 1 && (args[0] === "--help" || args[0] === "-h"))
+	);
+}
+
+export function renderRootHelp(version = VERSION): string {
+	return `plane ${version}
+
+Usage:
+  plane <command> [subcommand] [options]
+  plane <command> --help
+
+Setup:
+  plane init -g
+  plane init --local
+  plane projects list
+  plane projects use PROJ
+
+Common commands:
+  projects    list, current, use
+  issues      list
+  issue       get, create, update, delete, comment, activity, relation, link, comments, worklogs
+  cycles      list, create, update, delete, issues
+  modules     list, create, delete, issues
+  intake      list, accept, reject
+  pages       list, get, create, update, delete, archive, unarchive, lock, unlock, duplicate
+  states      list
+  labels      list, create, delete
+  members     list
+  stats       project or workspace rollups
+
+Config:
+  Global:     ~/.config/plane/config.json
+  Local:      nearest .plane/config.json upward from the current directory
+  Env:        PLANE_API_TOKEN, PLANE_HOST, PLANE_WORKSPACE, PLANE_PROJECT
+  Resolution: env vars > local config > global config
+
+Agent notes:
+  Add --json or --xml to list commands.
+  plane issue get PROJ-29 returns full JSON with parent_issue and child_issues summaries.
+  plane init --local writes .plane/project-context.json and updates AGENTS.md.
+
+Use 'plane <command> --help' for detailed syntax and options.
+API reference: https://developers.plane.so/api-reference/introduction`;
+}
+
 const plane = Command.make("plane").pipe(
 	Command.withDescription(
-		`CLI for the Plane project management API. Useful for humans and AI agents/bots.
-
-CONFIGURATION
-  Global config: ~/.config/plane/config.json
-  Local config:  nearest .plane/config.json from the current directory upward
-  Env vars:     PLANE_API_TOKEN
-                PLANE_HOST
-                PLANE_WORKSPACE
-                PLANE_PROJECT for a default project identifier
-  Precedence:   env vars > local config > global config
-
-QUICK START
-  plane init -g                       Interactive global setup
-  plane init --local                  Interactive local setup in the current directory
-  plane . init                        Local setup alias for the current directory
-  plane projects list                 List projects and their identifiers
-  plane projects use PROJ             Save a current project in the active config scope
-  plane projects use PROJ --global    Force the saved current project into global config
-  plane projects use PROJ --local     Force the saved current project into local config
-  plane issues list                   List issues for the saved current project
-  plane issues list PROJ              List issues for a project
-  plane issue get PROJ-29             Get full JSON for an issue
-  plane issue create --title "title"  Create an issue in the saved current project
-  plane issue create --title "title" PROJ
-  plane modules create --name "Sprint 3"
-  plane issue update --state done PROJ-29
-  plane issue comment PROJ-29 "text"  Add a comment
-
-CONCEPTS
-  Project identifier  Short string shown by 'plane projects list' (e.g. ACME, WEB)
-  Issue ref           Identifier + sequence number (e.g. ACME-29, WEB-5)
-  State groups        backlog | unstarted | started | completed | cancelled
-  Priorities          urgent | high | medium | low | none
-
-ALL SUBCOMMANDS
-  init                Set up global or local config interactively
-  .                   local init
-  projects            list | current | use
-  issues list         List issues (supports --state, --assignee, --priority,
-                      --no-assignee, --stale, --cycle)
-  issue               get | create | update | delete | comment | activity |
-                      link | comments | worklogs
-                      create/update support --start-date, --target-date,
-                      --estimate, --cycle, --module, --label (repeatable)
-  cycles              list | create | update | delete | issues (list, add)
-  modules             list | create | delete | issues (list, add, remove)
-  intake              list | accept | reject
-  pages               list | get | create | update | delete | archive | unarchive | lock | unlock | duplicate
-  states list         List workflow states for a project
-  stats               Aggregated issue statistics with period counts; use
-                      'workspace' for cross-project totals
-  labels              list | create | delete
-  members list        List workspace members
-
-FOR AI AGENTS / BOTS
-  - Add --json to any list command for JSON output (array of objects)
-  - Add --xml to any list command for XML output
-  - 'plane issue get PROJ-N' always outputs full JSON
-  - Use PLANE_API_TOKEN to avoid 'plane init'
-  - Use PLANE_HOST for self-hosted Plane instances
-  - Use PLANE_WORKSPACE to select the workspace
-  - Use PLANE_PROJECT or 'plane projects use PROJ' to persist a current project
-  - Local config lives in '.plane/config.json' and is resolved from the current directory upward
-  - Project-listing contexts exclude archived projects by default; add '--include-archived' where supported to include them
-  - 'plane init --local' also writes '.plane/project-context.json' with existing states, labels, and estimate points for the selected project
-  - 'plane init --local' also creates or updates 'AGENTS.md' so local AI agents reuse '.plane/project-context.json' for project-specific context
-  - Full Plane REST API reference (180+ endpoints):
-    https://developers.plane.so/api-reference/introduction`,
+		"CLI for the Plane project management API. Use 'plane <command> --help' for detailed command help.",
 	),
 	Command.withSubcommands([
 		local,
@@ -103,5 +87,5 @@ FOR AI AGENTS / BOTS
 
 export const cli = Command.run(plane, {
 	name: "plane",
-	version: "1.2.0",
+	version: VERSION,
 });

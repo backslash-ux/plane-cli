@@ -1,8 +1,14 @@
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { Effect, Layer } from "effect";
-import { cli } from "./app.js";
+import { cli, isRootHelpRequest, renderRootHelp } from "./app.js";
 
-Effect.suspend(() => cli(process.argv)).pipe(
+const program = isRootHelpRequest(process.argv)
+	? Effect.sync(() => {
+		console.log(renderRootHelp());
+	})
+	: Effect.suspend(() => cli(process.argv));
+
+program.pipe(
 	Effect.provide(Layer.mergeAll(NodeContext.layer)),
 	NodeRuntime.runMain,
 );

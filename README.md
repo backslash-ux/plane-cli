@@ -6,6 +6,8 @@ CLI for the [Plane](https://plane.so) project management API.
 
 Built for both human operators and AI agents that need predictable, scriptable, discoverable workflows around Plane projects, issues, cycles, modules, pages, and related resources.
 
+`plane --help` and bare `plane` print a concise overview. Use `plane <command> --help` when you need the full syntax and option details for a specific command.
+
 ## Upstream Attribution
 
 This repository is a fork of [aaronshaf/plane-cli](https://github.com/aaronshaf/plane-cli) and continues that work under the terms of the MIT license. The upstream project remains the original source for the codebase lineage; this fork carries its own roadmap, planning, and maintenance workflow.

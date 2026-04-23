@@ -6,6 +6,13 @@ This project aims to follow [Keep a Changelog](https://keepachangelog.com/en/1.1
 
 Earlier project history may predate this file.
 
+## Unreleased
+
+### Added
+
+### Changed
+- `plane --help` and bare `plane` now print a shorter, curated overview instead of the full generated command tree, which removes repeated nested command paths from the top-level help surface and keeps detailed syntax on `plane <command> --help`.
+
 ## 1.2.0
 
 ### Added

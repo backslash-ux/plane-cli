@@ -17,6 +17,8 @@ agent use. Install it globally with bun:
 bun install -g @backslash-ux/plane-cli
 ```
 
+Use `plane --help` or bare `plane` for the short command overview. Use `plane <command> --help` for full syntax on a specific command.
+
 ## Configuration
 
 Run once to save credentials interactively:
