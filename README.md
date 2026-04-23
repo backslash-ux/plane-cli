@@ -111,6 +111,8 @@ plane issues list PROJ --state started
 plane issues list PROJ --no-assignee
 plane issues list PROJ --stale 7
 plane issues list PROJ --cycle "Week 14"
+plane issues list PROJ --label bug
+plane issues list PROJ --label bug --label urgent
 plane issue get PROJ-29
 plane issue create --title "Title"
 plane issue create --title "Title" PROJ
@@ -212,6 +214,7 @@ plane cycles list PROJ --json
 - `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
 - `--target-date` has an alias `--due-date` for convenience.
 - `--label` can be passed multiple times to assign several labels at once.
+- `plane issues list --label` accepts label names (repeatable, AND logic) to filter issues by tag(s).
 - `--cycle` and `--module` accept either a UUID or the exact name shown by `plane cycles list` / `plane modules list`.
 - `plane issue link add` accepts an optional link title via `--title`.
 - `plane labels delete` accepts either the label UUID or the exact label name returned by `plane labels list`.

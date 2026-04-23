@@ -354,6 +354,7 @@ describe("issuesList --xml", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			),
 		);

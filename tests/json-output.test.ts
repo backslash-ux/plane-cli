@@ -364,6 +364,7 @@ describe("issuesList --json", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			),
 		);

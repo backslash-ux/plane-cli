@@ -140,6 +140,8 @@ plane issues list PROJ --priority high
 plane issues list PROJ --no-assignee
 plane issues list PROJ --stale 7
 plane issues list PROJ --cycle "Week 14"
+plane issues list PROJ --label bug
+plane issues list PROJ --label bug --label urgent
 plane issues list PROJ --xml
 ```
 
@@ -391,6 +393,7 @@ Some deployments do not expose page endpoints even when the project advertises p
 - `description` in issue or page create and update flows is passed through to `description_html`; send HTML such as `<p>Details</p>` when you want formatted output.
 - `--target-date` has an alias `--due-date` for convenience.
 - `--label` can be specified multiple times for multi-label assignment.
+- `plane issues list --label` accepts label names (repeatable, AND logic) to filter issues by tag(s).
 - `--cycle` and `--module` accept either a UUID or the exact name listed by `plane cycles list` / `plane modules list`. The CLI resolves names internally.
 - `plane modules create --lead` accepts a member display name, email, or UUID from `plane members list`.
 - `plane modules create --status in_progress` is normalized to Plane's `in-progress` API value.

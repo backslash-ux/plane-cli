@@ -9,6 +9,7 @@ import {
 	getMemberId,
 	requireProjectFeature,
 	resolveCycle,
+	resolveLabel,
 	resolveProject,
 } from "../resolve.js";
 
@@ -49,6 +50,10 @@ const cycleOption = Options.optional(Options.text("cycle")).pipe(
 	Options.withDescription("Filter by cycle (name or UUID)"),
 );
 
+const labelOption = Options.repeated(Options.text("label")).pipe(
+	Options.withDescription("Filter by label name(s) (repeatable)"),
+);
+
 export function issuesListHandler({
 	project,
 	state,
@@ -57,6 +62,7 @@ export function issuesListHandler({
 	noAssignee,
 	stale,
 	cycle,
+	label,
 }: {
 	project: string;
 	state: Option.Option<string>;
@@ -65,6 +71,7 @@ export function issuesListHandler({
 	noAssignee: boolean;
 	stale: Option.Option<number>;
 	cycle: Option.Option<string>;
+	label: Array<string>;
 }) {
 	return Effect.gen(function* () {
 		const { key, id } = yield* resolveProject(project);
@@ -125,6 +132,21 @@ export function issuesListHandler({
 			filtered = filtered.filter((i) => cycleIssueIds.has(i.id));
 		}
 
+		if (label.length > 0) {
+			const labelIds: string[] = [];
+			for (const l of label) {
+				const resolved = yield* resolveLabel(id, l);
+				labelIds.push(resolved.id);
+			}
+			filtered = filtered.filter((i) => {
+				if (!Array.isArray(i.labels)) return false;
+				const issueLabelIds = i.labels.map((l) =>
+					typeof l === "string" ? l : l.id,
+				);
+				return labelIds.every((lid) => issueLabelIds.includes(lid));
+			});
+		}
+
 		if (jsonMode) {
 			yield* Console.log(JSON.stringify(filtered, null, 2));
 			return;
@@ -146,12 +168,13 @@ export const issuesList = Command.make(
 		noAssignee: noAssigneeOption,
 		stale: staleOption,
 		cycle: cycleOption,
+		label: labelOption,
 		project: listProjectArg,
 	},
 	issuesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List issues for a project ordered by sequence ID.\n\nFilters:\n  --state       State group or name\n  --assignee    Member name/email/UUID\n  --priority    Priority level\n  --no-assignee Unassigned issues only\n  --stale N     Issues not updated in N+ days\n  --cycle       Issues in a specific cycle",
+		"List issues for a project ordered by sequence ID.\n\nFilters:\n  --state       State group or name\n  --assignee    Member name/email/UUID\n  --priority    Priority level\n  --no-assignee Unassigned issues only\n  --stale N     Issues not updated in N+ days\n  --cycle       Issues in a specific cycle\n  --label       Label name(s) (repeatable, AND logic)",
 	),
 );
 

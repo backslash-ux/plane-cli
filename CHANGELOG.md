@@ -10,6 +10,8 @@ Earlier project history may predate this file.
 
 ### Added
 
+- **Label filtering on issues list.** `plane issues list` now supports `--label <name>` (repeatable, AND logic) to filter issues by label name(s).
+
 ### Changed
 - `plane --help` and bare `plane` now print a shorter, curated overview instead of the full generated command tree, which removes repeated nested command paths from the top-level help surface and keeps detailed syntax on `plane <command> --help`.
 

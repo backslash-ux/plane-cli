@@ -173,6 +173,7 @@ describe("issuesList", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			);
 		} finally {
@@ -227,6 +228,7 @@ describe("issuesList", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			);
 		} finally {
@@ -281,6 +283,7 @@ describe("issuesList", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			);
 		} finally {
@@ -309,6 +312,7 @@ describe("issuesList", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			);
 		} finally {
@@ -361,6 +365,7 @@ describe("issuesList", () => {
 					noAssignee: true,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			);
 		} finally {
@@ -416,6 +421,7 @@ describe("issuesList", () => {
 					noAssignee: false,
 					stale: Option.some(30),
 					cycle: Option.none(),
+					label: [],
 				}),
 			);
 		} finally {
@@ -487,6 +493,7 @@ describe("issuesList", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.some("Sprint 1"),
+					label: [],
 				}),
 			);
 		} finally {
@@ -495,6 +502,187 @@ describe("issuesList", () => {
 		const output = logs.join("\n");
 		expect(output).toContain("In cycle issue");
 		expect(output).not.toContain("Not in cycle");
+	});
+
+	it("filters by single label", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-label-1",
+								sequence_id: 1,
+								name: "Bug issue",
+								priority: "high",
+								state: { id: "s-todo", name: "Todo", group: "unstarted" },
+								assignees: ["m-alice"],
+								labels: ["l-bug"],
+							},
+							{
+								id: "i-label-2",
+								sequence_id: 2,
+								name: "Feature issue",
+								priority: "medium",
+								state: { id: "s-todo", name: "Todo", group: "unstarted" },
+								assignees: ["m-bob"],
+								labels: ["l-feature"],
+							},
+						],
+					}),
+			),
+		);
+
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "ACME",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
+					label: ["Bug"],
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		const output = logs.join("\n");
+		expect(output).toContain("Bug issue");
+		expect(output).not.toContain("Feature issue");
+	});
+
+	it("filters by multiple labels (AND logic)", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-label-and-1",
+								sequence_id: 1,
+								name: "Both labels",
+								priority: "high",
+								state: { id: "s-todo", name: "Todo", group: "unstarted" },
+								assignees: [],
+								labels: ["l-bug", "l-urgent"],
+							},
+							{
+								id: "i-label-and-2",
+								sequence_id: 2,
+								name: "Only bug",
+								priority: "medium",
+								state: { id: "s-todo", name: "Todo", group: "unstarted" },
+								assignees: [],
+								labels: ["l-bug"],
+							},
+							{
+								id: "i-label-and-3",
+								sequence_id: 3,
+								name: "Only urgent",
+								priority: "urgent",
+								state: { id: "s-todo", name: "Todo", group: "unstarted" },
+								assignees: [],
+								labels: ["l-urgent"],
+							},
+						],
+					}),
+			),
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/labels/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{ id: "l-bug", name: "Bug", color: "#ff0000" },
+							{ id: "l-urgent", name: "Urgent", color: "#ff4444" },
+						],
+					}),
+			),
+		);
+
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "ACME",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
+					label: ["Bug", "Urgent"],
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		const output = logs.join("\n");
+		expect(output).toContain("Both labels");
+		expect(output).not.toContain("Only bug");
+		expect(output).not.toContain("Only urgent");
+	});
+
+	it("returns empty when no issues match label", async () => {
+		server.use(
+			http.get(
+				`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/issues/`,
+				() =>
+					HttpResponse.json({
+						results: [
+							{
+								id: "i-no-match",
+								sequence_id: 1,
+								name: "No label issue",
+								priority: "low",
+								state: { id: "s-todo", name: "Todo", group: "unstarted" },
+								assignees: [],
+								labels: [],
+							},
+						],
+					}),
+			),
+		);
+
+		const { issuesListHandler } = await import("@/commands/issues");
+		const logs: string[] = [];
+		const orig = console.log;
+		console.log = (...args: unknown[]) => logs.push(args.join(" "));
+
+		try {
+			await Effect.runPromise(
+				issuesListHandler({
+					project: "ACME",
+					state: Option.none(),
+					assignee: Option.none(),
+					priority: Option.none(),
+					noAssignee: false,
+					stale: Option.none(),
+					cycle: Option.none(),
+					label: ["Bug"],
+				}),
+			);
+		} finally {
+			console.log = orig;
+		}
+
+		const output = logs.join("\n");
+		expect(output).not.toContain("No label issue");
 	});
 });
 
