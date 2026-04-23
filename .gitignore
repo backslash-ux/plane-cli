@@ -10,4 +10,5 @@ dist/
 .github/prompts/
 .github/agents/
 .vscode/
-
+.opencode
+.brv
