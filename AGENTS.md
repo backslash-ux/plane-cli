@@ -76,7 +76,6 @@ When working as an AI agent in this directory:
 Common agent commands:
 
 ```sh
-unset PLANE_HOST PLANE_WORKSPACE PLANE_API_TOKEN PLANE_PROJECT
 plane projects current
 plane issues list @current
 plane issue get PLANECLI-12
