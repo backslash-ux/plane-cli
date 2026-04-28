@@ -13,7 +13,7 @@ import { projects } from "./commands/projects.js";
 import { states } from "./commands/states.js";
 import { stats } from "./commands/stats.js";
 
-export const VERSION = "1.2.0";
+export const VERSION = "1.2.1";
 
 export function isRootHelpRequest(argv: ReadonlyArray<string>): boolean {
 	const args = argv.slice(2);

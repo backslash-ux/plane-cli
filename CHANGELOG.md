@@ -6,7 +6,7 @@ This project aims to follow [Keep a Changelog](https://keepachangelog.com/en/1.1
 
 Earlier project history may predate this file.
 
-## Unreleased
+## 1.2.1
 
 ### Added
 
@@ -14,6 +14,9 @@ Earlier project history may predate this file.
 
 ### Changed
 - `plane --help` and bare `plane` now print a shorter, curated overview instead of the full generated command tree, which removes repeated nested command paths from the top-level help surface and keeps detailed syntax on `plane <command> --help`.
+
+### Fixed
+- Pre-commit hook now handles file size and coverage checks non-fatally (allowing commits to proceed even if checks fail).
 
 ## 1.2.0
 
