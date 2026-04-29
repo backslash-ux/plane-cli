@@ -10,7 +10,12 @@ Earlier project history may predate this file.
 
 ### Added
 
+- **Agent Skill Installation.** `plane init --local` now prompts to install the plane-cli skill to supported AI agent directories (Windsurf, OpenCode, Claude, Codex) following the Vercel skills convention. Detected agents (those with existing config directories like `.windsurf/`) default to "Y"; others default to "N". Skills are written to `.{agent}/skills/plane-cli/SKILL.md` so agents can load CLI usage guidance directly.
 - **Label filtering on issues list.** `plane issues list` now supports `--label <name>` (repeatable, AND logic) to filter issues by label name(s).
+
+### Removed
+
+- **SKILL.md import into AGENTS.md** has been removed. Agent usage guidance is now only installed to agent-specific skill directories, keeping AGENTS.md focused on repository context without embedded CLI documentation.
 
 ### Changed
 - `plane --help` and bare `plane` now print a shorter, curated overview instead of the full generated command tree, which removes repeated nested command paths from the top-level help surface and keeps detailed syntax on `plane <command> --help`.

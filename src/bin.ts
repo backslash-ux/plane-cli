@@ -4,8 +4,8 @@ import { cli, isRootHelpRequest, renderRootHelp } from "./app.js";
 
 const program = isRootHelpRequest(process.argv)
 	? Effect.sync(() => {
-		console.log(renderRootHelp());
-	})
+			console.log(renderRootHelp());
+		})
 	: Effect.suspend(() => cli(process.argv));
 
 program.pipe(

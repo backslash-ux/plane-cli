@@ -26,9 +26,7 @@ describe("root help", () => {
 
 		expect(help).toContain(`plane ${VERSION}`);
 		expect(help).toContain("plane <command> --help");
-		expect(help).toContain(
-			"projects    list, current, use",
-		);
+		expect(help).toContain("projects    list, current, use");
 		expect(help).toContain("Add --json or --xml to list commands.");
 		expect(help).not.toContain("OPTIONS");
 		expect(help).not.toContain("issue issue relation");

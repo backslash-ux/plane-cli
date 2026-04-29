@@ -65,6 +65,8 @@ Project lists and project-selection prompts exclude archived projects by default
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse what already exists instead of inventing duplicates.
 If `AGENTS.md` already exists in that directory, `plane init --local` appends a managed Plane project context section at the bottom without removing the existing content. If it does not exist, the CLI creates it. The managed section points agents at `.plane/project-context.json`, tells them to prefer the repo-local `plane` CLI for Plane work, and includes a small command pattern for clearing inherited `PLANE_*` overrides before using the local config.
 
+`plane init --local` also prompts to install the plane-cli skill to supported AI agent directories (Windsurf, OpenCode, Claude, Codex). If an agent's configuration directory is detected (e.g., `.windsurf/`), the prompt defaults to "Y". The skill is written to `.{agent}/skills/plane-cli/SKILL.md` following the Vercel skills convention, keeping agent usage guidance separate from the repository's AGENTS.md.
+
 You can also use environment variables (override saved config):
 
 ```
