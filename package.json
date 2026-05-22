@@ -29,7 +29,7 @@
   "module": "src/bin.ts",
   "type": "module",
   "bin": {
-    "plane": "./bin/plane"
+    "plane": "bin/plane"
   },
   "repository": {
     "type": "git",

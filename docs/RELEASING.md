@@ -54,7 +54,7 @@ git push origin vX.Y.Z
    - install dependencies with Bun
    - run the repository gate
    - verify the tag version matches `package.json`
-   - publish the package to npm
+   - publish the package to npm with the npm CLI
    - create a GitHub release with generated notes
 
 ## After Releasing
