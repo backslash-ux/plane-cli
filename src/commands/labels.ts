@@ -2,7 +2,7 @@ import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { LabelSchema, LabelsResponseSchema } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import { resolveLabel, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
@@ -41,7 +41,7 @@ export function labelsListHandler({ project }: { project: string }) {
 
 export const labelsList = Command.make(
 	"list",
-	{ project: listProjectArg },
+	{ project: listProjectArg, json: jsonOption, xml: xmlOption },
 	labelsListHandler,
 );
 
@@ -61,7 +61,12 @@ const labelArg = Args.text({ name: "label" }).pipe(
 
 export const labelsCreate = Command.make(
 	"create",
-	{ color: colorOption, project: listProjectArg, name: createNameOption },
+	{
+		color: colorOption,
+		json: jsonOption,
+		project: listProjectArg,
+		name: createNameOption,
+	},
 	labelsCreateHandler,
 ).pipe(
 	Command.withDescription(
@@ -88,6 +93,10 @@ export function labelsCreateHandler({
 		if (Option.isSome(color)) body.color = color.value;
 		const raw = yield* api.post(`projects/${id}/labels/`, body);
 		const label = yield* decodeOrFail(LabelSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify({ action: "created", label }, null, 2));
+			return;
+		}
 		yield* Console.log(`Created label: ${label.name} (${label.id})`);
 	});
 }

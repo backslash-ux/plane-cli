@@ -2,7 +2,7 @@ import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { PageSchema, PagesResponseSchema } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import { requireProjectFeature, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
@@ -89,7 +89,7 @@ export function pagesListHandler({ project }: { project: string }) {
 
 export const pagesList = Command.make(
 	"list",
-	{ project: listProjectArg },
+	{ project: listProjectArg, json: jsonOption, xml: xmlOption },
 	pagesListHandler,
 ).pipe(
 	Command.withDescription(
@@ -111,13 +111,17 @@ export function pagesGetHandler({
 		yield* requireProjectFeature(id, "page_view");
 		const raw = yield* api.get(`projects/${id}/pages/${pageId}/`);
 		const page = yield* decodeOrFail(PageSchema, raw);
+		if (xmlMode) {
+			yield* Console.log(toXml([page]));
+			return;
+		}
 		yield* Console.log(JSON.stringify(page, null, 2));
 	});
 }
 
 export const pagesGet = Command.make(
 	"get",
-	{ project: projectArg, pageId: pageIdArg },
+	{ project: projectArg, pageId: pageIdArg, json: jsonOption, xml: xmlOption },
 	pagesGetHandler,
 ).pipe(
 	Command.withDescription(
@@ -148,13 +152,22 @@ export function pagesCreateHandler({
 			`Project pages are not available for ${key} on this Plane instance or API version.`,
 		);
 		const page = yield* decodeOrFail(PageSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify({ action: "created", page }, null, 2));
+			return;
+		}
 		yield* Console.log(`Created page ${page.id}: ${page.name}`);
 	});
 }
 
 export const pagesCreate = Command.make(
 	"create",
-	{ project: listProjectArg, name: nameOption, description: descriptionOption },
+	{
+		project: listProjectArg,
+		name: nameOption,
+		description: descriptionOption,
+		json: jsonOption,
+	},
 	pagesCreateHandler,
 ).pipe(
 	Command.withDescription(
@@ -186,6 +199,10 @@ export function pagesUpdateHandler({
 		if (Option.isSome(description)) body.description_html = description.value;
 		const raw = yield* api.patch(`projects/${id}/pages/${pageId}/`, body);
 		const page = yield* decodeOrFail(PageSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify({ action: "updated", page }, null, 2));
+			return;
+		}
 		yield* Console.log(`Updated page ${page.id}: ${page.name}`);
 	});
 }
@@ -197,6 +214,7 @@ export const pagesUpdate = Command.make(
 		pageId: pageIdArg,
 		name: nameOptionalOption,
 		description: descriptionOption,
+		json: jsonOption,
 	},
 	pagesUpdateHandler,
 ).pipe(

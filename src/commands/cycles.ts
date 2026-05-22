@@ -6,7 +6,7 @@ import {
 	CycleSchema,
 	CyclesResponseSchema,
 } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import {
 	findIssueBySeq,
 	parseIssueRef,
@@ -130,7 +130,7 @@ export function cyclesListHandler({ project }: { project: string }) {
 
 export const cyclesList = Command.make(
 	"list",
-	{ project: listProjectArg },
+	{ project: listProjectArg, json: jsonOption, xml: xmlOption },
 	cyclesListHandler,
 ).pipe(
 	Command.withDescription(
@@ -169,6 +169,10 @@ export function cyclesCreateHandler({
 		}
 		const raw = yield* api.post(`projects/${id}/cycles/`, body);
 		const cycle = yield* decodeOrFail(CycleSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify({ action: "created", cycle }, null, 2));
+			return;
+		}
 		yield* Console.log(`Created cycle: ${cycle.name} (${cycle.id})`);
 	});
 }
@@ -179,6 +183,7 @@ export const cyclesCreate = Command.make(
 		name: cycleNameOption,
 		startDate: cycleStartDateOption,
 		endDate: cycleEndDateOption,
+		json: jsonOption,
 		project: listProjectArg,
 	},
 	cyclesCreateHandler,
@@ -229,7 +234,14 @@ export function cyclesUpdateHandler({
 			yield* Console.log("Nothing to update");
 			return;
 		}
-		yield* api.patch(`projects/${id}/cycles/${resolved.id}/`, body);
+		const raw = yield* api.patch(`projects/${id}/cycles/${resolved.id}/`, body);
+		const updated = yield* decodeOrFail(CycleSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify({ action: "updated", cycle: updated }, null, 2),
+			);
+			return;
+		}
 		yield* Console.log(`Updated cycle: ${resolved.name} (${resolved.id})`);
 	});
 }
@@ -240,6 +252,7 @@ export const cyclesUpdate = Command.make(
 		name: cycleUpdateNameOption,
 		startDate: cycleStartDateOption,
 		endDate: cycleEndDateOption,
+		json: jsonOption,
 		project: projectArg,
 		cycle: cycleArg,
 	},

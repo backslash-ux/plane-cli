@@ -2,10 +2,10 @@ import { Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { MembersResponseSchema } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 
-export const membersList = Command.make("list", {}, () =>
-	Effect.gen(function* () {
+export function membersListHandler() {
+	return Effect.gen(function* () {
 		const raw = yield* api.get("members/");
 		const results = yield* decodeOrFail(MembersResponseSchema, raw);
 		if (jsonMode) {
@@ -21,7 +21,13 @@ export const membersList = Command.make("list", {}, () =>
 			return `${m.display_name.padEnd(24)}${email}`;
 		});
 		yield* Console.log(lines.join("\n"));
-	}),
+	});
+}
+
+export const membersList = Command.make(
+	"list",
+	{ json: jsonOption, xml: xmlOption },
+	membersListHandler,
 );
 
 export const members = Command.make("members").pipe(

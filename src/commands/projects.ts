@@ -1,7 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { isProjectArchived } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import { listProjects, resolveProject } from "../resolve.js";
 import {
 	type ConfigScope,
@@ -96,7 +96,7 @@ export function projectsListHandler({
 
 export const projectsList = Command.make(
 	"list",
-	{ includeArchived: includeArchivedOption },
+	{ includeArchived: includeArchivedOption, json: jsonOption, xml: xmlOption },
 	projectsListHandler,
 ).pipe(
 	Command.withDescription(
@@ -120,7 +120,15 @@ export function projectsCurrentHandler() {
 		const results = yield* listProjects({ includeArchived: true });
 		const project = results.find((candidate) => candidate.id === id);
 		if (!project) {
+			if (jsonMode) {
+				yield* Console.log(JSON.stringify({ project: key, source }, null, 2));
+				return;
+			}
 			yield* Console.log(`${key}  (${source})`);
+			return;
+		}
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify({ project, source }, null, 2));
 			return;
 		}
 		yield* Console.log(
@@ -131,7 +139,7 @@ export function projectsCurrentHandler() {
 
 export const projectsCurrent = Command.make(
 	"current",
-	{},
+	{ json: jsonOption },
 	projectsCurrentHandler,
 ).pipe(
 	Command.withDescription(
@@ -167,13 +175,28 @@ export function projectsUseHandler({
 				defaultProject: key,
 			});
 		}
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify(
+					{ action: "current_project_set", project: key, scope },
+					null,
+					2,
+				),
+			);
+			return;
+		}
 		yield* Console.log(`Current project set to ${key} (${scope})`);
 	});
 }
 
 export const projectsUse = Command.make(
 	"use",
-	{ project: projectArg, global: globalOption, local: localOption },
+	{
+		project: projectArg,
+		global: globalOption,
+		local: localOption,
+		json: jsonOption,
+	},
 	projectsUseHandler,
 ).pipe(
 	Command.withDescription(

@@ -1,6 +1,12 @@
 import * as readline from "node:readline";
 import { Command, Options } from "@effect/cli";
 import { Console, Effect, type Schema } from "effect";
+import {
+	checkAgentExists,
+	readPackageSkillContent,
+	SUPPORTED_AGENTS,
+	writeAgentSkill,
+} from "../agent-skills.js";
 import { decodeOrFail } from "../api.js";
 import {
 	EstimatePointsResponseSchema,
@@ -16,12 +22,6 @@ import {
 	getLocalAgentsFilePath,
 	writeLocalProjectAgentsFile,
 } from "../project-agents.js";
-import {
-	checkAgentExists,
-	readPackageSkillContent,
-	SUPPORTED_AGENTS,
-	writeAgentSkill,
-} from "../agent-skills.js";
 import {
 	buildProjectContextSnapshot,
 	getLocalProjectContextFilePath,
