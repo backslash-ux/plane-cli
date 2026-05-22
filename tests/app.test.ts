@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { VERSION, isRootHelpRequest, renderRootHelp } from "@/app";
+import { isRootHelpRequest, renderRootHelp, VERSION } from "@/app";
 
 describe("root help", () => {
 	it("treats bare invocation as a root help request", () => {
@@ -27,7 +27,7 @@ describe("root help", () => {
 		expect(help).toContain(`plane ${VERSION}`);
 		expect(help).toContain("plane <command> --help");
 		expect(help).toContain("projects    list, current, use");
-		expect(help).toContain("Add --json or --xml to list commands.");
+		expect(help).toContain("Add --json or --xml to list/get commands");
 		expect(help).not.toContain("OPTIONS");
 		expect(help).not.toContain("issue issue relation");
 		expect(help).not.toContain("cycles cycles issues");
