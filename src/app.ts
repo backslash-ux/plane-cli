@@ -9,6 +9,7 @@ import { local } from "./commands/local.js";
 import { members } from "./commands/members.js";
 import { modules } from "./commands/modules.js";
 import { pages } from "./commands/pages.js";
+import { project } from "./commands/project.js";
 import { projects } from "./commands/projects.js";
 import { states } from "./commands/states.js";
 import { stats } from "./commands/stats.js";
@@ -38,6 +39,7 @@ Setup:
 
 Common commands:
   projects    list, current, use
+  project     context
   issues      list
   issue       get, create, update, delete, comment, activity, relation, link, comments, worklogs
   cycles      list, create, update, delete, issues
@@ -56,8 +58,8 @@ Config:
   Resolution: env vars > local config > global config
 
 Agent notes:
-  Add --json or --xml to list commands.
-  plane issue get PROJ-29 returns full JSON with parent_issue and child_issues summaries.
+  Add --json or --xml to list/get commands; add --json to create/update/bulk commands.
+  plane issue get PROJ-29 returns full JSON with stable ref, state_name, and state_group fields.
   plane init --local writes .plane/project-context.json and updates AGENTS.md.
 
 Use 'plane <command> --help' for detailed syntax and options.
@@ -82,6 +84,7 @@ const plane = Command.make("plane").pipe(
 		modules,
 		intake,
 		pages,
+		project,
 	]),
 );
 
