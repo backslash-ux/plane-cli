@@ -10,7 +10,7 @@ import type {
 } from "../config.js";
 import { PaginatedIssuesResponseSchema } from "../config.js";
 import { formatStats } from "../format.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import {
 	getMemberId,
 	listProjects,
@@ -416,11 +416,13 @@ export const statsList = Command.make(
 		module: moduleOption,
 		assignee: assigneeOption,
 		includeArchived: includeArchivedOption,
+		json: jsonOption,
+		xml: xmlOption,
 	},
 	statsHandler,
 ).pipe(
 	Command.withDescription(
-		"Show aggregated issue statistics for a project or for the whole workspace using PROJECT='workspace'.\n\nBreaks down issues by state group, priority, assignment, and period counts.\nAll aggregation is client-side — no server analytics endpoints required. Workspace aggregation excludes archived projects by default; add --include-archived to include them.\n\nFilters:\n  --since DATE            Count created/completed issues on or after DATE (YYYY-MM-DD)\n  --until DATE            Count created/completed issues before DATE (YYYY-MM-DD)\n  --cycle NAME            Scope to a specific cycle (project stats only)\n  --module NAME           Scope to a specific module (project stats only)\n  --assignee WHO          Scope to issues assigned to a member (project stats only)\n  --include-archived      Include archived projects in workspace aggregation\n\nNote: @effect/cli requires command options before PROJECT, so use 'plane stats --since 2026-04-01 PROJ'.",
+		"Show aggregated issue statistics for a project or for the whole workspace using PROJECT='workspace'.\n\nBreaks down issues by state group, priority, assignment, and period counts.\nAll aggregation is client-side — no server analytics endpoints required. Workspace aggregation excludes archived projects by default; add --include-archived to include them.\n\nFilters:\n  --since DATE            Count created/completed issues on or after DATE (YYYY-MM-DD)\n  --until DATE            Count created/completed issues before DATE (YYYY-MM-DD)\n  --cycle NAME            Scope to a specific cycle (project stats only)\n  --module NAME           Scope to a specific module (project stats only)\n  --assignee WHO          Scope to issues assigned to a member (project stats only)\n  --include-archived      Include archived projects in workspace aggregation",
 	),
 );
 

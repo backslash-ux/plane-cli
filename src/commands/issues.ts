@@ -4,13 +4,22 @@ import { api, decodeOrFail } from "../api.js";
 import type { State } from "../config.js";
 import { IssuesResponseSchema } from "../config.js";
 import { formatIssue } from "../format.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import {
+	jsonMode,
+	jsonOption,
+	normalizeIssueForJson,
+	toXml,
+	xmlMode,
+	xmlOption,
+} from "../output.js";
 import {
 	getMemberId,
 	requireProjectFeature,
 	resolveCycle,
+	resolveLabel,
 	resolveProject,
 } from "../resolve.js";
+import { issuesBulkCreate, issuesBulkUpdate } from "./issues-bulk.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
@@ -49,6 +58,10 @@ const cycleOption = Options.optional(Options.text("cycle")).pipe(
 	Options.withDescription("Filter by cycle (name or UUID)"),
 );
 
+const labelOption = Options.repeated(Options.text("label")).pipe(
+	Options.withDescription("Filter by label name(s) (repeatable)"),
+);
+
 export function issuesListHandler({
 	project,
 	state,
@@ -57,6 +70,7 @@ export function issuesListHandler({
 	noAssignee,
 	stale,
 	cycle,
+	label,
 }: {
 	project: string;
 	state: Option.Option<string>;
@@ -65,6 +79,7 @@ export function issuesListHandler({
 	noAssignee: boolean;
 	stale: Option.Option<number>;
 	cycle: Option.Option<string>;
+	label: Array<string>;
 }) {
 	return Effect.gen(function* () {
 		const { key, id } = yield* resolveProject(project);
@@ -125,12 +140,35 @@ export function issuesListHandler({
 			filtered = filtered.filter((i) => cycleIssueIds.has(i.id));
 		}
 
+		if (label.length > 0) {
+			const labelIds: string[] = [];
+			for (const l of label) {
+				const resolved = yield* resolveLabel(id, l);
+				labelIds.push(resolved.id);
+			}
+			filtered = filtered.filter((i) => {
+				if (!Array.isArray(i.labels)) return false;
+				const issueLabelIds = i.labels.map((l) =>
+					typeof l === "string" ? l : l.id,
+				);
+				return labelIds.every((lid) => issueLabelIds.includes(lid));
+			});
+		}
+
 		if (jsonMode) {
-			yield* Console.log(JSON.stringify(filtered, null, 2));
+			yield* Console.log(
+				JSON.stringify(
+					filtered.map((issue) => normalizeIssueForJson(key, issue)),
+					null,
+					2,
+				),
+			);
 			return;
 		}
 		if (xmlMode) {
-			yield* Console.log(toXml(filtered));
+			yield* Console.log(
+				toXml(filtered.map((issue) => normalizeIssueForJson(key, issue))),
+			);
 			return;
 		}
 		yield* Console.log(filtered.map((i) => formatIssue(i, key)).join("\n"));
@@ -146,18 +184,21 @@ export const issuesList = Command.make(
 		noAssignee: noAssigneeOption,
 		stale: staleOption,
 		cycle: cycleOption,
+		label: labelOption,
+		json: jsonOption,
+		xml: xmlOption,
 		project: listProjectArg,
 	},
 	issuesListHandler,
 ).pipe(
 	Command.withDescription(
-		"List issues for a project ordered by sequence ID.\n\nFilters:\n  --state       State group or name\n  --assignee    Member name/email/UUID\n  --priority    Priority level\n  --no-assignee Unassigned issues only\n  --stale N     Issues not updated in N+ days\n  --cycle       Issues in a specific cycle",
+		"List issues for a project ordered by sequence ID.\n\nFilters:\n  --state       State group or name\n  --assignee    Member name/email/UUID\n  --priority    Priority level\n  --no-assignee Unassigned issues only\n  --stale N     Issues not updated in N+ days\n  --cycle       Issues in a specific cycle\n  --label       Label name(s) (repeatable, AND logic)",
 	),
 );
 
 export const issues = Command.make("issues").pipe(
 	Command.withDescription(
-		"List and filter issues. Use 'plane issues list --help' for filtering options.",
+		"List, filter, and bulk-manage issues. Use 'plane issues <subcommand> --help' for options.",
 	),
-	Command.withSubcommands([issuesList]),
+	Command.withSubcommands([issuesList, issuesBulkCreate, issuesBulkUpdate]),
 );

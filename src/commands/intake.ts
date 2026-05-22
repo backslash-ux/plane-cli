@@ -2,7 +2,7 @@ import { Args, Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { IntakeIssuesResponseSchema } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import { requireProjectFeature, resolveProject } from "../resolve.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
@@ -76,7 +76,7 @@ export function intakeListHandler({ project }: { project: string }) {
 
 export const intakeList = Command.make(
 	"list",
-	{ project: listProjectArg },
+	{ project: listProjectArg, json: jsonOption, xml: xmlOption },
 	intakeListHandler,
 ).pipe(
 	Command.withDescription(
@@ -101,16 +101,25 @@ export function intakeAcceptHandler({
 		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "intake_view");
 		const mutationId = yield* resolveIntakeMutationId(id, intakeId);
-		yield* api.patch(`projects/${id}/intake-issues/${mutationId}/`, {
-			status: 1,
-		});
+		const raw = yield* api.patch(
+			`projects/${id}/intake-issues/${mutationId}/`,
+			{
+				status: 1,
+			},
+		);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify({ action: "accepted", intakeId, result: raw }, null, 2),
+			);
+			return;
+		}
 		yield* Console.log(`Intake issue ${intakeId} accepted`);
 	});
 }
 
 export const intakeAccept = Command.make(
 	"accept",
-	{ project: projectArg, intakeId: intakeIdArg },
+	{ project: projectArg, intakeId: intakeIdArg, json: jsonOption },
 	intakeAcceptHandler,
 ).pipe(
 	Command.withDescription(
@@ -131,16 +140,25 @@ export function intakeRejectHandler({
 		const { id } = yield* resolveProject(project);
 		yield* requireProjectFeature(id, "intake_view");
 		const mutationId = yield* resolveIntakeMutationId(id, intakeId);
-		yield* api.patch(`projects/${id}/intake-issues/${mutationId}/`, {
-			status: -1,
-		});
+		const raw = yield* api.patch(
+			`projects/${id}/intake-issues/${mutationId}/`,
+			{
+				status: -1,
+			},
+		);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify({ action: "rejected", intakeId, result: raw }, null, 2),
+			);
+			return;
+		}
 		yield* Console.log(`Intake issue ${intakeId} rejected`);
 	});
 }
 
 export const intakeReject = Command.make(
 	"reject",
-	{ project: projectArg, intakeId: intakeIdArg },
+	{ project: projectArg, intakeId: intakeIdArg, json: jsonOption },
 	intakeRejectHandler,
 ).pipe(Command.withDescription("Reject an intake issue."));
 

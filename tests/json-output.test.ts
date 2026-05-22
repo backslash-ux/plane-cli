@@ -129,10 +129,16 @@ const WORKLOGS = [
 	},
 ];
 const STATES = [{ id: "s1", name: "In Progress", group: "started" }];
+const MEMBERS = [
+	{ id: "m1", display_name: "Alice Agent", email: "alice@example.com" },
+];
 
 const server = setupServer(
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/`, () =>
 		HttpResponse.json({ results: PROJECTS }),
+	),
+	http.get(`${BASE}/api/v1/workspaces/${WS}/members/`, () =>
+		HttpResponse.json(MEMBERS),
 	),
 	http.get(`${BASE}/api/v1/workspaces/${WS}/projects/proj-acme/`, () =>
 		HttpResponse.json(PROJECT_DETAIL),
@@ -364,11 +370,61 @@ describe("issuesList --json", () => {
 					noAssignee: false,
 					stale: Option.none(),
 					cycle: Option.none(),
+					label: [],
 				}),
 			),
 		);
 		const parsed = JSON.parse(output);
 		expect(Array.isArray(parsed)).toBe(true);
 		expect(parsed[0].id).toBe("i1");
+	});
+});
+
+describe("membersList --json", () => {
+	it("outputs JSON array of members", async () => {
+		const { membersListHandler } = await import("@/commands/members");
+		const output = await captureLogs(() =>
+			Effect.runPromise(membersListHandler()),
+		);
+		const parsed = JSON.parse(output);
+		expect(Array.isArray(parsed)).toBe(true);
+		expect(parsed[0].id).toBe("m1");
+	});
+});
+
+describe("statesList --json", () => {
+	it("outputs JSON array of states", async () => {
+		const { statesListHandler } = await import("@/commands/states");
+		const output = await captureLogs(() =>
+			Effect.runPromise(statesListHandler({ project: "ACME" })),
+		);
+		const parsed = JSON.parse(output);
+		expect(Array.isArray(parsed)).toBe(true);
+		expect(parsed[0].id).toBe("s1");
+	});
+});
+
+describe("projectsList --json", () => {
+	it("outputs JSON array of projects", async () => {
+		const { projectsListHandler } = await import("@/commands/projects");
+		const output = await captureLogs(() =>
+			Effect.runPromise(projectsListHandler({ includeArchived: true })),
+		);
+		const parsed = JSON.parse(output);
+		expect(Array.isArray(parsed)).toBe(true);
+		expect(parsed[0].id).toBe("proj-acme");
+	});
+});
+
+describe("projectsCurrent --json", () => {
+	it("outputs JSON for the effective current project", async () => {
+		process.env.PLANE_PROJECT = "ACME";
+		const { projectsCurrentHandler } = await import("@/commands/projects");
+		const output = await captureLogs(() =>
+			Effect.runPromise(projectsCurrentHandler()),
+		);
+		const parsed = JSON.parse(output);
+		expect(parsed.source).toBe("env");
+		expect(parsed.project.id).toBe("proj-acme");
 	});
 });

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository publishes from Git tags that match `v*` through [`.github/workflows/publish.yml`](../.github/workflows/publish.yml).
+This repository publishes from Git tags that match `v*` through the publish job in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 ## One-Time Maintainer Setup
 
@@ -13,7 +13,7 @@ Before the first public release, make sure the publication path itself is ready:
    - keep using the current `NPM_CONFIG_TOKEN` secret with a token that is allowed to publish this package, or
    - migrate the workflow to npm trusted publishing so long-lived tokens are no longer required.
 3. Add the `NPM_CONFIG_TOKEN` repository secret in GitHub if the token-based workflow remains in use.
-4. Confirm GitHub Actions is enabled for the repository and that the publish workflow can create releases. The current workflow already requests `contents: write`.
+4. Confirm GitHub Actions is enabled for the repository and that the CI publish job can create releases. The publish job requests `contents: write`.
 5. Verify the default branch is healthy before tagging: CI should pass on `main` and the version in `package.json` should match the intended release.
 6. Confirm the repository URLs in `package.json` and the install instructions in `README.md` and `SKILL.md` point at the maintained fork.
 
@@ -50,10 +50,11 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-4. The publish workflow will:
+4. The CI workflow will:
    - install dependencies with Bun
    - run the repository gate
-   - publish the package to npm
+   - verify the tag version matches `package.json`
+   - publish the package to npm with the npm CLI
    - create a GitHub release with generated notes
 
 ## After Releasing

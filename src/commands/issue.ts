@@ -3,11 +3,23 @@ import { Console, Effect, Option } from "effect";
 import { api, decodeOrFail } from "../api.js";
 import { ActivitiesResponseSchema, IssueSchema } from "../config.js";
 import { escapeHtmlText } from "../format.js";
+import {
+	findDuplicateCandidates,
+	resolveDescriptionInput,
+} from "../issue-agent.js";
 import type {
 	IssueCreatePayload,
 	IssueUpdatePayload,
 } from "../issue-support.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import {
+	issueMutationResult,
+	jsonMode,
+	jsonOption,
+	normalizeIssueForJson,
+	toXml,
+	xmlMode,
+	xmlOption,
+} from "../output.js";
 import {
 	findIssueBySeq,
 	getLabelId,
@@ -41,15 +53,20 @@ const refArg = Args.text({ name: "ref" }).pipe(
 // --- issue get ---
 export function issueGetHandler({ ref }: { ref: string }) {
 	return Effect.gen(function* () {
-		const { projectId, seq } = yield* parseIssueRef(ref);
+		const { projectId, projKey, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
-		yield* Console.log(JSON.stringify(issue, null, 2));
+		const normalized = normalizeIssueForJson(projKey, issue);
+		if (xmlMode) {
+			yield* Console.log(toXml([normalized]));
+			return;
+		}
+		yield* Console.log(JSON.stringify(normalized, null, 2));
 	});
 }
 
 export const issueGet = Command.make(
 	"get",
-	{ ref: refArg },
+	{ ref: refArg, json: jsonOption, xml: xmlOption },
 	issueGetHandler,
 ).pipe(
 	Command.withDescription(
@@ -71,6 +88,15 @@ const titleUpdateOption = Options.optional(Options.text("title")).pipe(
 
 const descriptionOption = Options.optional(Options.text("description")).pipe(
 	Options.withDescription("Issue description as HTML (e.g. '<p>Details</p>')"),
+);
+
+const fromFileOption = Options.optional(Options.text("from-file")).pipe(
+	Options.withDescription("Read issue description HTML from a file"),
+);
+
+const stdinOption = Options.boolean("stdin").pipe(
+	Options.withDescription("Read issue description HTML from stdin"),
+	Options.withDefault(false),
 );
 
 const assigneeOption = Options.optional(Options.text("assignee")).pipe(
@@ -114,6 +140,8 @@ export function issueUpdateHandler({
 	priority,
 	title,
 	description,
+	fromFile,
+	stdin,
 	assignee,
 	label,
 	noAssignee,
@@ -128,6 +156,8 @@ export function issueUpdateHandler({
 	priority: Option.Option<string>;
 	title: Option.Option<string>;
 	description: Option.Option<string>;
+	fromFile?: Option.Option<string>;
+	stdin?: boolean;
 	assignee: Option.Option<string>;
 	label: Array<string>;
 	noAssignee: boolean;
@@ -152,8 +182,13 @@ export function issueUpdateHandler({
 		if (Option.isSome(title)) {
 			body.name = title.value;
 		}
-		if (Option.isSome(description)) {
-			body.description_html = description.value;
+		const resolvedDescription = yield* resolveDescriptionInput({
+			description,
+			fromFile,
+			stdin,
+		});
+		if (Option.isSome(resolvedDescription)) {
+			body.description_html = resolvedDescription.value;
 		}
 		if (noAssignee) {
 			body.assignees = [];
@@ -219,6 +254,20 @@ export function issueUpdateHandler({
 			`projects/${projectId}/issues/${issue.id}/`,
 		);
 		const updated = yield* decodeOrFail(IssueSchema, refreshedRaw);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify(
+					issueMutationResult({
+						action: "updated",
+						projectKey: ref.split("-")[0]?.toUpperCase() ?? "",
+						issue: updated,
+					}),
+					null,
+					2,
+				),
+			);
+			return;
+		}
 		const stateName =
 			typeof updated.state === "object" ? updated.state.name : updated.state;
 		yield* Console.log(
@@ -234,6 +283,9 @@ export const issueUpdate = Command.make(
 		priority: priorityOption,
 		title: titleUpdateOption,
 		description: descriptionOption,
+		fromFile: fromFileOption,
+		stdin: stdinOption,
+		json: jsonOption,
 		assignee: assigneeOption,
 		label: labelOption,
 		noAssignee: noAssigneeOption,
@@ -307,6 +359,12 @@ const createDescriptionOption = Options.optional(
 	Options.withDescription("Issue description as HTML (e.g. '<p>Details</p>')"),
 );
 
+const dedupeOption = Options.optional(Options.text("dedupe")).pipe(
+	Options.withDescription(
+		"Report possible duplicates before create: title, similarity, or title,similarity",
+	),
+);
+
 const createAssigneeOption = Options.optional(Options.text("assignee")).pipe(
 	Options.withDescription("Assign to a member (display name, email, or UUID)"),
 );
@@ -343,6 +401,9 @@ export function issueCreateHandler({
 	priority,
 	state,
 	description,
+	fromFile,
+	stdin,
+	dedupe,
 	assignee,
 	label,
 	startDate,
@@ -356,6 +417,9 @@ export function issueCreateHandler({
 	priority: Option.Option<string>;
 	state: Option.Option<string>;
 	description: Option.Option<string>;
+	fromFile?: Option.Option<string>;
+	stdin?: boolean;
+	dedupe?: Option.Option<string>;
 	assignee: Option.Option<string>;
 	label: Array<string>;
 	startDate: Option.Option<string>;
@@ -366,12 +430,36 @@ export function issueCreateHandler({
 }) {
 	return Effect.gen(function* () {
 		const { key, id: projectId } = yield* resolveProject(project);
+		if (dedupe !== undefined && Option.isSome(dedupe)) {
+			const duplicateReport = yield* findDuplicateCandidates({
+				projectId,
+				projectKey: key,
+				title,
+				modes: dedupe.value,
+			});
+			if (duplicateReport.candidates.length > 0) {
+				if (jsonMode) {
+					yield* Console.log(JSON.stringify(duplicateReport, null, 2));
+					return;
+				}
+				const candidates = duplicateReport.candidates
+					.map((candidate) => `${candidate.ref}: ${candidate.title}`)
+					.join("\n");
+				yield* Console.log(`Possible duplicate found:\n${candidates}`);
+				return;
+			}
+		}
 		const body: IssueCreatePayload = { name: title };
 		if (Option.isSome(priority)) body.priority = priority.value;
 		if (Option.isSome(state))
 			body.state = yield* getStateId(projectId, state.value);
-		if (Option.isSome(description)) {
-			body.description_html = description.value;
+		const resolvedDescription = yield* resolveDescriptionInput({
+			description,
+			fromFile,
+			stdin,
+		});
+		if (Option.isSome(resolvedDescription)) {
+			body.description_html = resolvedDescription.value;
 		}
 		if (Option.isSome(assignee)) {
 			const memberId = yield* getMemberId(assignee.value);
@@ -414,6 +502,24 @@ export function issueCreateHandler({
 			);
 		}
 
+		if (jsonMode) {
+			const refreshed = yield* decodeOrFail(
+				IssueSchema,
+				yield* api.get(`projects/${projectId}/issues/${created.id}/`),
+			);
+			yield* Console.log(
+				JSON.stringify(
+					issueMutationResult({
+						action: "created",
+						projectKey: key,
+						issue: refreshed,
+					}),
+					null,
+					2,
+				),
+			);
+			return;
+		}
 		yield* Console.log(
 			`Created ${key}-${created.sequence_id}: ${created.name}`,
 		);
@@ -433,6 +539,10 @@ export const issueCreate = Command.make(
 		estimate: createEstimateOption,
 		cycle: createCycleOption,
 		module: createModuleOption,
+		fromFile: fromFileOption,
+		stdin: stdinOption,
+		dedupe: dedupeOption,
+		json: jsonOption,
 		title: createTitleOption,
 		project: createProjectArg,
 	},
@@ -479,7 +589,7 @@ export function issueActivityHandler({ ref }: { ref: string }) {
 
 export const issueActivity = Command.make(
 	"activity",
-	{ ref: refArg },
+	{ ref: refArg, json: jsonOption, xml: xmlOption },
 	issueActivityHandler,
 ).pipe(
 	Command.withDescription(

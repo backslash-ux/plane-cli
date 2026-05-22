@@ -1,6 +1,12 @@
 import * as readline from "node:readline";
 import { Command, Options } from "@effect/cli";
 import { Console, Effect, type Schema } from "effect";
+import {
+	checkAgentExists,
+	readPackageSkillContent,
+	SUPPORTED_AGENTS,
+	writeAgentSkill,
+} from "../agent-skills.js";
 import { decodeOrFail } from "../api.js";
 import {
 	EstimatePointsResponseSchema,
@@ -14,9 +20,6 @@ import {
 } from "../config.js";
 import {
 	getLocalAgentsFilePath,
-	hasSkillSectionInAgentsFile,
-	importSkillIntoAgentsFile,
-	readPackageSkillContent,
 	writeLocalProjectAgentsFile,
 } from "../project-agents.js";
 import {
@@ -592,30 +595,38 @@ export function initHandler(
 					yield* Console.log(`Local AGENTS.md updated at ${agentsPath}`);
 
 					const skillContent = readPackageSkillContent();
+					// Agent skill installation prompts
 					if (skillContent) {
-						const alreadyHasSkill = hasSkillSectionInAgentsFile();
-						const skillPromptText = alreadyHasSkill
-							? "Update SKILL.md (CLI usage guide) in AGENTS.md? [Y/n]: "
-							: "Import SKILL.md (CLI usage guide) into AGENTS.md? [y/N]: ";
-						const skillRl = readline.createInterface({
-							input: process.stdin,
-							output: process.stdout,
-						});
-						let skillAnswer: string;
-						try {
-							skillAnswer = yield* Effect.promise(() =>
-								prompt(skillRl, skillPromptText),
-							);
-						} finally {
-							skillRl.close();
-						}
-						const trimmed = skillAnswer.trim().toLowerCase();
-						const shouldImport = alreadyHasSkill
-							? trimmed !== "n" && trimmed !== "no"
-							: trimmed === "y" || trimmed === "yes";
-						if (shouldImport) {
-							importSkillIntoAgentsFile(skillContent);
-							yield* Console.log("  SKILL.md imported into AGENTS.md");
+						yield* Console.log("");
+						for (const agent of SUPPORTED_AGENTS) {
+							const agentExists = checkAgentExists(agent.id);
+							const detectedText = agentExists ? " (detected)" : "";
+							const defaultYes = agentExists ? "Y/n" : "y/N";
+							const agentRl = readline.createInterface({
+								input: process.stdin,
+								output: process.stdout,
+							});
+							let agentAnswer: string;
+							try {
+								agentAnswer = yield* Effect.promise(() =>
+									prompt(
+										agentRl,
+										`Install plane-cli skill to ${agent.displayName}${detectedText}? [${defaultYes}]: `,
+									),
+								);
+							} finally {
+								agentRl.close();
+							}
+							const trimmedAnswer = agentAnswer.trim().toLowerCase();
+							const shouldInstall = agentExists
+								? trimmedAnswer !== "n" && trimmedAnswer !== "no"
+								: trimmedAnswer === "y" || trimmedAnswer === "yes";
+							if (shouldInstall) {
+								writeAgentSkill(agent.id, skillContent);
+								yield* Console.log(
+									`  Skill installed to ${agent.dirName}/skills/plane-cli/SKILL.md`,
+								);
+							}
 						}
 					}
 				} else {
@@ -648,6 +659,6 @@ export const localInit = Command.make(
 	(options) => initHandler({ global: false, local: true, ...options }, "local"),
 ).pipe(
 	Command.withDescription(
-		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, updates AGENTS.md with project-context guidance for AI agents, and optionally imports the SKILL.md CLI usage guide into AGENTS.md. Project selection excludes archived projects by default; add --include-archived to include them.",
+		"Interactive local setup. Saves overrides to ./.plane/config.json in the current directory, reports project feature flags, writes a local project helper snapshot for states, labels, and estimate points, updates AGENTS.md with project-context guidance for AI agents, and optionally installs the plane-cli skill to AI agent directories (Windsurf, OpenCode, Claude, Codex). Project selection excludes archived projects by default; add --include-archived to include them.",
 	),
 );

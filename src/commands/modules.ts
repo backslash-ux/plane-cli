@@ -6,7 +6,7 @@ import {
 	ModuleSchema,
 	ModulesResponseSchema,
 } from "../config.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import {
 	findIssueBySeq,
 	getMemberId,
@@ -139,7 +139,7 @@ export function modulesListHandler({ project }: { project: string }) {
 
 export const modulesList = Command.make(
 	"list",
-	{ project: listProjectArg },
+	{ project: listProjectArg, json: jsonOption, xml: xmlOption },
 	modulesListHandler,
 ).pipe(
 	Command.withDescription(
@@ -194,6 +194,12 @@ export function modulesCreateHandler({
 
 		const raw = yield* api.post(`projects/${id}/modules/`, body);
 		const module = yield* decodeOrFail(ModuleSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify({ action: "created", module }, null, 2),
+			);
+			return;
+		}
 		yield* Console.log(`Created module: ${module.name} (${module.id})`);
 	});
 }
@@ -207,6 +213,7 @@ export const modulesCreate = Command.make(
 		startDate: startDateOption,
 		targetDate: targetDateOption,
 		lead: leadOption,
+		json: jsonOption,
 		project: listProjectArg,
 	},
 	modulesCreateHandler,

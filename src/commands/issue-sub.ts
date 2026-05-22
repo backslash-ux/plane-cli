@@ -15,7 +15,7 @@ import {
 	requestWithFallback,
 	type WorklogPayload,
 } from "../issue-support.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import { jsonMode, jsonOption, toXml, xmlMode, xmlOption } from "../output.js";
 import { findIssueBySeq, parseIssueRef } from "../resolve.js";
 
 const refArg = Args.text({ name: "ref" }).pipe(
@@ -57,7 +57,7 @@ export function issueLinkListHandler({ ref }: { ref: string }) {
 
 export const issueLinkList = Command.make(
 	"list",
-	{ ref: refArg },
+	{ ref: refArg, json: jsonOption, xml: xmlOption },
 	issueLinkListHandler,
 ).pipe(Command.withDescription("List URL links attached to an issue."));
 
@@ -89,13 +89,17 @@ export function issueLinkAddHandler({
 			`Issue links are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const link = yield* decodeOrFail(IssueLinkSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(JSON.stringify({ action: "created", link }, null, 2));
+			return;
+		}
 		yield* Console.log(`Link added: ${link.id}  ${link.url}`);
 	});
 }
 
 export const issueLinkAdd = Command.make(
 	"add",
-	{ title: linkTitleOption, ref: refArg, url: urlArg },
+	{ title: linkTitleOption, ref: refArg, url: urlArg, json: jsonOption },
 	issueLinkAddHandler,
 ).pipe(
 	Command.withDescription(
@@ -175,7 +179,7 @@ export function issueCommentsListHandler({ ref }: { ref: string }) {
 
 export const issueCommentsList = Command.make(
 	"list",
-	{ ref: refArg },
+	{ ref: refArg, json: jsonOption, xml: xmlOption },
 	issueCommentsListHandler,
 ).pipe(
 	Command.withDescription(
@@ -201,17 +205,23 @@ export function issueCommentUpdateHandler({
 		const { projectId, seq } = yield* parseIssueRef(ref);
 		const issue = yield* findIssueBySeq(projectId, seq);
 		const escaped = escapeHtmlText(text);
-		yield* api.patch(
+		const raw = yield* api.patch(
 			`projects/${projectId}/issues/${issue.id}/comments/${commentId}/`,
 			{ comment_html: `<p>${escaped}</p>` },
 		);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify({ action: "updated", commentId, result: raw }, null, 2),
+			);
+			return;
+		}
 		yield* Console.log(`Comment ${commentId} updated`);
 	});
 }
 
 export const issueCommentUpdate = Command.make(
 	"update",
-	{ ref: refArg, commentId: commentIdArg, text: textArg },
+	{ ref: refArg, commentId: commentIdArg, text: textArg, json: jsonOption },
 	issueCommentUpdateHandler,
 ).pipe(
 	Command.withDescription(
@@ -291,7 +301,7 @@ export function issueWorklogsListHandler({ ref }: { ref: string }) {
 
 export const issueWorklogsList = Command.make(
 	"list",
-	{ ref: refArg },
+	{ ref: refArg, json: jsonOption, xml: xmlOption },
 	issueWorklogsListHandler,
 ).pipe(
 	Command.withDescription(
@@ -327,6 +337,12 @@ export function issueWorklogsAddHandler({
 			`Issue worklogs are not available for ${ref} on this Plane instance or API version.`,
 		);
 		const log = yield* decodeOrFail(WorklogSchema, raw);
+		if (jsonMode) {
+			yield* Console.log(
+				JSON.stringify({ action: "created", worklog: log }, null, 2),
+			);
+			return;
+		}
 		const hrs = (log.duration / 60).toFixed(1);
 		yield* Console.log(`Logged ${hrs}h on ${ref} (${log.id})`);
 	});
@@ -334,7 +350,12 @@ export function issueWorklogsAddHandler({
 
 export const issueWorklogsAdd = Command.make(
 	"add",
-	{ description: worklogDescOption, ref: refArg, duration: durationArg },
+	{
+		description: worklogDescOption,
+		ref: refArg,
+		duration: durationArg,
+		json: jsonOption,
+	},
 	issueWorklogsAddHandler,
 ).pipe(
 	Command.withDescription(

@@ -6,6 +6,8 @@ CLI for the [Plane](https://plane.so) project management API.
 
 Built for both human operators and AI agents that need predictable, scriptable, discoverable workflows around Plane projects, issues, cycles, modules, pages, and related resources.
 
+`plane --help` and bare `plane` print a concise overview. Use `plane <command> --help` when you need the full syntax and option details for a specific command.
+
 ## Upstream Attribution
 
 This repository is a fork of [aaronshaf/plane-cli](https://github.com/aaronshaf/plane-cli) and continues that work under the terms of the MIT license. The upstream project remains the original source for the codebase lineage; this fork carries its own roadmap, planning, and maintenance workflow.
@@ -63,6 +65,8 @@ Project lists and project-selection prompts exclude archived projects by default
 It also writes `.plane/project-context.json`, a machine-readable helper snapshot of the project's existing states, labels, and estimate points so agents can reuse what already exists instead of inventing duplicates.
 If `AGENTS.md` already exists in that directory, `plane init --local` appends a managed Plane project context section at the bottom without removing the existing content. If it does not exist, the CLI creates it. The managed section points agents at `.plane/project-context.json`, tells them to prefer the repo-local `plane` CLI for Plane work, and includes a small command pattern for clearing inherited `PLANE_*` overrides before using the local config.
 
+`plane init --local` also prompts to install the plane-cli skill to supported AI agent directories (Windsurf, OpenCode, Claude, Codex). If an agent's configuration directory is detected (e.g., `.windsurf/`), the prompt defaults to "Y". The skill is written to `.{agent}/skills/plane-cli/SKILL.md` following the Vercel skills convention, keeping agent usage guidance separate from the repository's AGENTS.md.
+
 You can also use environment variables (override saved config):
 
 ```
@@ -109,9 +113,17 @@ plane issues list PROJ --state started
 plane issues list PROJ --no-assignee
 plane issues list PROJ --stale 7
 plane issues list PROJ --cycle "Week 14"
+plane issues list PROJ --label bug
+plane issues list PROJ --label bug --label urgent
+plane issues bulk-create PROJ --file issues.json --state Todo --label pre-UAT
+plane issues bulk-create PROJ --file issues.json --dry-run --dedupe title,similarity
+plane issues bulk-update PROJ --file updates.json --dry-run
 plane issue get PROJ-29
 plane issue create --title "Title"
 plane issue create --title "Title" PROJ
+plane issue create PROJ --title "Title"
+plane issue create --from-file issue.html --title "Long description" PROJ
+plane issue create --dedupe title --title "Follow-up" PROJ
 plane issue create --start-date 2025-04-01 --target-date 2025-04-14 --title "Sprint task" PROJ
 plane issue create --label bug --label urgent --title "Regression" PROJ
 plane issue create --cycle "Week 14" --title "Scoped task" PROJ
@@ -167,6 +179,7 @@ plane pages list PROJ
 plane pages get PROJ PAGE_ID
 
 # States, labels, members
+plane project context PROJ --json
 plane states list PROJ
 plane labels list PROJ
 plane labels delete PROJ bug
@@ -184,7 +197,7 @@ plane stats --include-archived workspace
 plane stats --since 2025-01-01 workspace --json
 ```
 
-For `plane stats`, command-specific options such as `--since`, `--until`, `--cycle`, `--module`, and `--assignee` must come before the `PROJECT` argument or the special `workspace` keyword because of `@effect/cli` parsing rules. `--json` and `--xml` still work as global output flags. Workspace aggregation skips projects that return `403` for issue listing and reports them in the output.
+Options may be placed before or after positional arguments for common command shapes, so both `plane issues list PROJ --state started` and `plane issues list --state started PROJ` are accepted. Workspace stats aggregation skips projects that return `403` for issue listing and reports them in the output.
 
 Project identifiers: short strings like `PROJ`, `WEB`. Issue refs: `PROJ-29`, `WEB-5`.
 
@@ -196,20 +209,26 @@ Full API reference: https://developers.plane.so/api-reference/introduction
 
 ## Structured Output
 
-List-oriented commands support `--json` and `--xml` for automation. `plane issue get PROJ-N` always returns full JSON.
+List and get commands support `--json` and `--xml` for automation. Create/update/bulk commands support opt-in `--json` while preserving human-readable default output. Issue JSON includes stable `ref`, `title`, `state_name`, `state_group`, and `url` fields in addition to the Plane API fields.
 
 ```bash
 plane projects list --json
 plane issues list PROJ --xml
 plane cycles list PROJ --json
+plane issue create --json --title "Machine-readable result" PROJ
 ```
 
 ## Command Notes
 
-- `plane issue update` expects flags before the issue ref, for example `plane issue update --state completed PROJ-29`.
+- Most commands accept flags before or after positional args, for example `plane issue update PROJ-29 --state completed` and `plane issue update --state completed PROJ-29`.
 - `--description` for issue and page create or update commands is sent through to Plane as HTML in `description_html`.
+- `plane issue create` and `plane issue update` also accept `--from-file` or `--stdin` for long HTML descriptions.
+- `plane issue create --dedupe title` and `plane issues bulk-create --dedupe title,similarity` report possible duplicates without creating or updating existing issues.
+- `plane issues bulk-update` requires each JSON record to include `ref`, for example `PROJ-29`.
+- `plane project context` prints the local `.plane/project-context.json` snapshot.
 - `--target-date` has an alias `--due-date` for convenience.
 - `--label` can be passed multiple times to assign several labels at once.
+- `plane issues list --label` accepts label names (repeatable, AND logic) to filter issues by tag(s).
 - `--cycle` and `--module` accept either a UUID or the exact name shown by `plane cycles list` / `plane modules list`.
 - `plane issue link add` accepts an optional link title via `--title`.
 - `plane labels delete` accepts either the label UUID or the exact label name returned by `plane labels list`.
