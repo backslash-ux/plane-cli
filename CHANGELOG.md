@@ -8,17 +8,24 @@ Earlier project history may predate this file.
 
 ## Unreleased
 
+## 1.3.0 - 2026-05-22
+
 ### Added
 
 - **Agent-efficient issue workflows.** `plane issues bulk-create` and `plane issues bulk-update` support JSON files, shared defaults, dry-run validation, and report-only duplicate detection.
 - **Issue description input sources.** `plane issue create` and `plane issue update` now accept `--from-file` and `--stdin` for long HTML descriptions.
 - **Project context command.** `plane project context` exposes the local `.plane/project-context.json` snapshot directly from the CLI.
 - **Visible structured output flags.** List/get/create/update/bulk command help now exposes supported `--json` and `--xml` flags. Mutation commands support opt-in JSON output.
+- **CI-backed npm publishing.** `v*` release tags now run the CI gates and publish the matching package version to npm automatically.
 
 ### Changed
 
 - **Argument-order tolerance.** Common command shapes now accept flags before or after positional arguments, reducing retries in agent sessions.
 - **Issue JSON shape.** Issue JSON output now includes stable helper fields: `ref`, `title`, `state_name`, `state_group`, and `url`.
+
+### Fixed
+
+- **Release packaging.** The Husky prepare hook is non-fatal so npm dry runs and CI publishing do not fail when Git hooks are unavailable.
 
 ## 1.2.1
 
