@@ -86,16 +86,17 @@ If a local config is active in the current path, `plane projects use PROJ` write
 
 ## Structured Output for AI Agents
 
-All list commands support `--xml` and `--json` flags.
+List and get commands support `--xml` and `--json` flags. Create, update, and bulk commands keep human-readable output by default and support opt-in `--json`.
 
 - **`--xml`** — outputs a `<results>` document with one `<item>` per record (attributes HTML-escaped). Most reliable for AI parsing.
-- **`--json`** — outputs a JSON array.
-- **`plane issue get PROJ-N`** — always outputs full JSON, no flag needed.
+- **`--json`** — outputs JSON arrays for list commands and stable JSON objects for get/create/update/bulk commands.
+- **Issue JSON** — includes `ref`, `title`, `state_name`, `state_group`, and `url` in addition to Plane API fields.
 
 ```bash
 plane projects list --xml
 plane issues list PROJ --xml
 plane issues list PROJ --state started --xml
+plane issue create PROJ --title "Follow-up" --json
 plane stats --json PROJ
 plane states list PROJ --xml
 plane labels list PROJ --xml
@@ -121,6 +122,7 @@ plane projects list --include-archived
 plane projects use PROJ
 plane projects use PROJ --local
 plane projects current
+plane project context PROJ --json
 plane projects list --xml
 ```
 
@@ -146,6 +148,19 @@ plane issues list PROJ --xml
 ```
 
 Filtering is client-side (no server search endpoint). Fetch all and filter locally.
+Options may be placed before or after the project argument.
+
+### Bulk Create / Update
+
+```bash
+plane issues bulk-create PROJ --file issues.json --state Todo --label pre-UAT
+plane issues bulk-create PROJ --file issues.json --dry-run --dedupe title,similarity
+plane issues bulk-update PROJ --file updates.json --dry-run
+```
+
+Bulk create files contain a JSON array with `title` plus optional issue fields such as `description`, `priority`, `state`, `labels`, `assignee`, `start_date`, `target_date`, `estimate`, `cycle`, and `module`. Shared flags act as defaults; per-record fields override them. Bulk update files require each record to include `ref`.
+
+`--dry-run` validates state, labels, priority, cycle/module, estimate, description shape, and duplicate candidates without mutating Plane. `--dedupe` is report-only and never updates existing issues automatically.
 
 ### Get (full JSON)
 
@@ -160,6 +175,9 @@ plane issue create --title "Issue title"
 plane issue create --title "Issue title" PROJ
 plane issue create --priority high --state started --title "Fix lint pipeline"
 plane issue create --description '<p>Detailed context</p>' --title "Add dark mode" PROJ
+plane issue create --from-file issue.html --title "Add dark mode" PROJ
+plane issue create --stdin --title "Add dark mode" PROJ
+plane issue create --dedupe title --title "Add dark mode" PROJ
 plane issue create --assignee "Jane Doe" --title "Onboarding bug" PROJ
 plane issue create --label "bug" --label "urgent" --title "Regression in login flow" PROJ
 plane issue create --start-date 2025-04-01 --target-date 2025-04-14 --title "Sprint task" PROJ
@@ -170,15 +188,15 @@ plane issue create --module "Sprint 3" --title "Scoped to module" PROJ
 
 ### Update
 
-> **Important:** Options must come *before* the ref argument.
-> `plane issue update --state done PROJ-29` ✅
-> `plane issue update PROJ-29 --state done` ❌ (flags after positional args are ignored)
+Options may come before or after the ref argument.
 
 ```bash
 plane issue update --state completed PROJ-29
 plane issue update --priority high WEB-5
 plane issue update --title "New title" PROJ-29
 plane issue update --description '<p>Updated context</p>' PROJ-29
+plane issue update PROJ-29 --from-file issue.html
+plane issue update PROJ-29 --stdin
 plane issue update --assignee "Jane Doe" PROJ-29
 plane issue update --no-assignee PROJ-29
 plane issue update --label "enhancement" PROJ-29

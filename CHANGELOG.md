@@ -6,6 +6,20 @@ This project aims to follow [Keep a Changelog](https://keepachangelog.com/en/1.1
 
 Earlier project history may predate this file.
 
+## Unreleased
+
+### Added
+
+- **Agent-efficient issue workflows.** `plane issues bulk-create` and `plane issues bulk-update` support JSON files, shared defaults, dry-run validation, and report-only duplicate detection.
+- **Issue description input sources.** `plane issue create` and `plane issue update` now accept `--from-file` and `--stdin` for long HTML descriptions.
+- **Project context command.** `plane project context` exposes the local `.plane/project-context.json` snapshot directly from the CLI.
+- **Visible structured output flags.** List/get/create/update/bulk command help now exposes supported `--json` and `--xml` flags. Mutation commands support opt-in JSON output.
+
+### Changed
+
+- **Argument-order tolerance.** Common command shapes now accept flags before or after positional arguments, reducing retries in agent sessions.
+- **Issue JSON shape.** Issue JSON output now includes stable helper fields: `ref`, `title`, `state_name`, `state_group`, and `url`.
+
 ## 1.2.1
 
 ### Added
