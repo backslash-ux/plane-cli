@@ -4,7 +4,14 @@ import { api, decodeOrFail } from "../api.js";
 import type { State } from "../config.js";
 import { IssuesResponseSchema } from "../config.js";
 import { formatIssue } from "../format.js";
-import { jsonMode, toXml, xmlMode } from "../output.js";
+import {
+	jsonMode,
+	jsonOption,
+	normalizeIssueForJson,
+	toXml,
+	xmlMode,
+	xmlOption,
+} from "../output.js";
 import {
 	getMemberId,
 	requireProjectFeature,
@@ -12,6 +19,7 @@ import {
 	resolveLabel,
 	resolveProject,
 } from "../resolve.js";
+import { issuesBulkCreate, issuesBulkUpdate } from "./issues-bulk.js";
 
 const projectArg = Args.text({ name: "project" }).pipe(
 	Args.withDescription(
@@ -148,11 +156,19 @@ export function issuesListHandler({
 		}
 
 		if (jsonMode) {
-			yield* Console.log(JSON.stringify(filtered, null, 2));
+			yield* Console.log(
+				JSON.stringify(
+					filtered.map((issue) => normalizeIssueForJson(key, issue)),
+					null,
+					2,
+				),
+			);
 			return;
 		}
 		if (xmlMode) {
-			yield* Console.log(toXml(filtered));
+			yield* Console.log(
+				toXml(filtered.map((issue) => normalizeIssueForJson(key, issue))),
+			);
 			return;
 		}
 		yield* Console.log(filtered.map((i) => formatIssue(i, key)).join("\n"));
@@ -169,6 +185,8 @@ export const issuesList = Command.make(
 		stale: staleOption,
 		cycle: cycleOption,
 		label: labelOption,
+		json: jsonOption,
+		xml: xmlOption,
 		project: listProjectArg,
 	},
 	issuesListHandler,
@@ -180,7 +198,7 @@ export const issuesList = Command.make(
 
 export const issues = Command.make("issues").pipe(
 	Command.withDescription(
-		"List and filter issues. Use 'plane issues list --help' for filtering options.",
+		"List, filter, and bulk-manage issues. Use 'plane issues <subcommand> --help' for options.",
 	),
-	Command.withSubcommands([issuesList]),
+	Command.withSubcommands([issuesList, issuesBulkCreate, issuesBulkUpdate]),
 );
