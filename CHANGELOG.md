@@ -8,6 +8,12 @@ Earlier project history may predate this file.
 
 ## Unreleased
 
+## 1.3.1 - 2026-07-02
+
+### Fixed
+
+- **CLI version reporting.** `plane --version` now reports `1.3.1`, correcting the stale runtime version string shipped in the `1.3.0` package.
+
 ## 1.3.0 - 2026-05-22
 
 ### Added
